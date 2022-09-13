@@ -1330,7 +1330,6 @@ let PredictionMarket = (_dec = NearBindgen({}), _dec2 = initialize({}), _dec3 = 
   bids = new LookupMap("b");
   rounds = new LookupMap("r");
   userRounds = new LookupMap("u");
-  prices = new LookupMap("p");
 
   init({
     owner,
@@ -1362,15 +1361,25 @@ let PredictionMarket = (_dec = NearBindgen({}), _dec2 = initialize({}), _dec3 = 
     return this.rounds.get(epoch.toString());
   } // PUBLIC
 
+  /**
+   * @notice Make the bet on the price move
+   * @param epoch: epoch on each the user want to participate; must be current epoch
+   * @param position: bullish or bearish
+   */
+
 
   bet({
     epoch,
     position
   }) {
-    assert(epoch == this.currentEpoch, "Wrong epoch"); // check bettable round
+    const sender = predecessorAccountId();
 
-    assert(attachedDeposit() >= BigInt(this.minBid), "Bid is too low"); // check bid only once per round
+    const userRounds = this._getUserRounds(sender);
 
+    assert(epoch == this.currentEpoch, "Wrong epoch");
+    assert(attachedDeposit() >= BigInt(this.minBid), "Bid is too low");
+    assert(position != Position.None, "Position should be selected");
+    assert(!userRounds.contains(epoch), "User already participated in this round");
     const amount = attachedDeposit();
 
     let round = this._getRound(epoch);
@@ -1382,10 +1391,6 @@ let PredictionMarket = (_dec = NearBindgen({}), _dec2 = initialize({}), _dec3 = 
     } else {
       round.bullAmount = (BigInt(round.bullAmount) + amount).toString();
     }
-
-    const sender = predecessorAccountId();
-
-    const userRounds = this._getUserRounds(sender);
 
     let betInfo = this._getBetInfo(epoch, sender);
 
@@ -1399,6 +1404,11 @@ let PredictionMarket = (_dec = NearBindgen({}), _dec2 = initialize({}), _dec3 = 
 
     log(`${sender} bids in the ${epoch} epoch. Amount is ${amount}`);
   }
+  /**
+   * @notice Claim rewards for the successful bids
+   * @param epochs: epochs in which the user has unclaimed rewards
+   */
+
 
   claim({
     epochs
@@ -1412,7 +1422,7 @@ let PredictionMarket = (_dec = NearBindgen({}), _dec2 = initialize({}), _dec3 = 
       assert(BigInt(round.startTimestamp) != BigInt(0), "Round isn't started");
       assert(BigInt(round.closeTimestamp) < blockTimestamp(), "Round isn't ended");
       assert(round.oracleCalled, "Oracle isn't called");
-      assert(this.claimable(epoch, sender), "Not eligible");
+      assert(this.claimable(epoch, sender), "Claim is not eligible");
 
       let betInfo = this._getBetInfo(epoch, sender);
 
@@ -1429,12 +1439,21 @@ let PredictionMarket = (_dec = NearBindgen({}), _dec2 = initialize({}), _dec3 = 
       this._safeTransfer(sender, reward);
     }
   }
+  /**
+   * @notice Request price and rounds updates
+   */
+
 
   reveal({}) {
     assert(this.genesisLockOnce && this.genesisStartOnce, "Genesis rounds aren't finished");
 
     this._requestPrice(this.currentEpoch, "_revealCallback");
   }
+  /**
+   * @notice Start new round, lock previous and end the one before
+   * @param epoch: epoch on each the price is updated; must be current epoch
+   */
+
 
   _revealCallback({
     epoch
@@ -1453,6 +1472,10 @@ let PredictionMarket = (_dec = NearBindgen({}), _dec2 = initialize({}), _dec3 = 
 
     this._safeStartRound(this.currentEpoch);
   }
+  /**
+   * @notice Start the first round
+   */
+
 
   genesisStartRound({}) {
     assert(!this.genesisStartOnce, "Genesis round is started");
@@ -1462,6 +1485,10 @@ let PredictionMarket = (_dec = NearBindgen({}), _dec2 = initialize({}), _dec3 = 
 
     this.genesisStartOnce = true;
   }
+  /**
+   * @notice Request price and management of first 2 rounds
+   */
+
 
   genesisLockRound({}) {
     assert(this.genesisStartOnce, "Genesis round is not started");
@@ -1469,6 +1496,11 @@ let PredictionMarket = (_dec = NearBindgen({}), _dec2 = initialize({}), _dec3 = 
 
     this._requestPrice(this.currentEpoch, "_genesisLockRoundCallback");
   }
+  /**
+   * @notice Start second round and lock first round
+   * @param epoch: epoch on each the price is updated; must be current epoch
+   */
+
 
   _genesisLockRoundCallback({
     epoch
@@ -1539,6 +1571,11 @@ let PredictionMarket = (_dec = NearBindgen({}), _dec2 = initialize({}), _dec3 = 
     this.pendingOwner = "";
   } // INTERNAL
 
+  /**
+   * @notice Calculate round results and rewards
+   * @param epoch: epoch on which the rewards are calculated
+   */
+
 
   _calculateRewards(epoch) {
     let round = this._getRound(epoch);
@@ -1566,6 +1603,12 @@ let PredictionMarket = (_dec = NearBindgen({}), _dec2 = initialize({}), _dec3 = 
 
     log(`Rewards for ${epoch} round calculated`);
   }
+  /**
+   * @notice Lock round i.e. stop accepting the bids for the round
+   * @param epoch: what epoch is to be locked
+   * @param price: asset's price at the epoch lock
+   */
+
 
   _safeLockRound(epoch, price) {
     let round = this._getRound(epoch);
@@ -1579,6 +1622,12 @@ let PredictionMarket = (_dec = NearBindgen({}), _dec2 = initialize({}), _dec3 = 
 
     log(`The round ${epoch} locked`);
   }
+  /**
+   * @notice End round and make available for rewards distribution
+   * @param epoch: what epoch is to be locked
+   * @param price: asset's price at which the epoch is closed
+   */
+
 
   _safeEndRound(epoch, price) {
     let round = this._getRound(epoch);
@@ -1592,6 +1641,11 @@ let PredictionMarket = (_dec = NearBindgen({}), _dec2 = initialize({}), _dec3 = 
 
     log(`The round ${epoch} closed`);
   }
+  /**
+   * @notice Check all constraints and start new round
+   * @param epoch: new epoch
+   */
+
 
   _safeStartRound(epoch) {
     let oldRound = this._getRound(epoch - 2);
@@ -1602,13 +1656,18 @@ let PredictionMarket = (_dec = NearBindgen({}), _dec2 = initialize({}), _dec3 = 
 
     this._startRound(epoch);
   }
+  /**
+   * @notice Start new round
+   * @param epoch: new epoch
+   */
+
 
   _startRound(epoch) {
     let round = new Round(epoch.toFixed(), blockTimestamp().toString(), (blockTimestamp() + BigInt(this.duration)).toString(), (blockTimestamp() + BigInt(2) * BigInt(this.duration)).toString(), "0", "0", "0", "0", "0", "0", "0", false);
 
     this._setRound(epoch, round);
 
-    log(`The roumd ${epoch} started`);
+    log(`The round ${epoch} started`);
   } // HELPERS
 
 

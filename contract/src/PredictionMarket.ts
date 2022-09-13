@@ -86,8 +86,11 @@ class PredictionMarket {
       (near.attachedDeposit() as bigint) >= BigInt(this.minBid),
       "Bid is too low"
     );
-    assert(position == Position.None, "Wrong epoch");
-    assert(userRounds.contains(epoch), "Wrong epoch");
+    assert(position != Position.None, "Position should be selected");
+    assert(
+      !userRounds.contains(epoch),
+      "User already participated in this round"
+    );
 
     const amount: bigint = near.attachedDeposit();
     let round = this._getRound(epoch);
