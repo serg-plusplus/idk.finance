@@ -73,8 +73,6 @@ class PredictionMarket {
     near.log(`${sender} bids in the ${epoch} epoch. Amount is ${amount}`);
   }
 
-  // ORACLE
-
   @call({})
   reveal({}: {}): void {
     assert(
@@ -89,6 +87,28 @@ class PredictionMarket {
 
     this.currentEpoch += 1;
     this._safeStartRound(this.currentEpoch);
+  }
+
+  @call({})
+  genesisStartRound({}: {}): void {
+    assert(!this.genesisStartOnce, "Genesis round is started");
+
+    this.currentEpoch += 1;
+    this._startRound(this.currentEpoch);
+    this.genesisStartOnce = true;
+  }
+
+  @call({})
+  genesisLockRound({}: {}): void {
+    assert(this.genesisStartOnce, "Genesis round is not started");
+    assert(!this.genesisLockOnce, "Genesis round is locked");
+
+    let price = this._getPrice();
+    this._safeLockRound(this.currentEpoch, price);
+
+    this.currentEpoch += 1;
+    this._startRound(this.currentEpoch);
+    this.genesisLockOnce = true;
   }
 
   // ADMIN
