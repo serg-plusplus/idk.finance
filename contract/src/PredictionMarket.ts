@@ -39,7 +39,6 @@ class PredictionMarket {
   bids: LookupMap = new LookupMap("b");
   rounds: LookupMap = new LookupMap("r");
   userRounds: LookupMap = new LookupMap("u");
-  prices: LookupMap = new LookupMap("p");
 
   @initialize({})
   init({ owner, manager }: { owner: string; manager: string }) {
@@ -72,15 +71,19 @@ class PredictionMarket {
 
   // PUBLIC
 
+  /**
+   * @notice Make the bet on the price move
+   * @param epoch: epoch on each the user want to participate; must be current epoch
+   * @param position: bullish or bearish
+   */
   @call({ payableFunction: true })
   bet({ epoch, position }: { epoch: number; position: Position }): void {
     assert(epoch == this.currentEpoch, "Wrong epoch");
-    // check bettable round
     assert(
       (near.attachedDeposit() as bigint) >= BigInt(this.minBid),
       "Bid is too low"
     );
-    // check bid only once per round
+    // TODO: check bid only once per round
 
     const amount: bigint = near.attachedDeposit();
     let round = this._getRound(epoch);
@@ -104,6 +107,10 @@ class PredictionMarket {
     near.log(`${sender} bids in the ${epoch} epoch. Amount is ${amount}`);
   }
 
+  /**
+   * @notice Claim rewards for the successful bids
+   * @param epochs: epochs in which the user has unclaimed rewards
+   */
   @call({})
   claim({ epochs }: { epochs: number[] }): void {
     let reward = BigInt(0);
@@ -118,13 +125,12 @@ class PredictionMarket {
         "Round isn't ended"
       );
       assert(round.oracleCalled, "Oracle isn't called");
-      assert(this.claimable(epoch, sender), "Not eligible");
+      assert(this.claimable(epoch, sender), "Claim is not eligible");
 
       let betInfo = this._getBetInfo(epoch, sender);
       const epochReward =
         (betInfo.amount * BigInt(round.rewardAmount)) /
         BigInt(round.rewardBaseCalAmount);
-
       reward += epochReward;
       betInfo.claimed = true;
 
@@ -138,6 +144,9 @@ class PredictionMarket {
     }
   }
 
+  /**
+   * @notice Request price and rounds updates
+   */
   @call({})
   reveal({}: {}): void {
     assert(
@@ -148,6 +157,10 @@ class PredictionMarket {
     this._requestPrice(this.currentEpoch, "_revealCallback");
   }
 
+  /**
+   * @notice Start new round, lock previous and end the one before
+   * @param epoch: epoch on each the price is updated; must be current epoch
+   */
   @call({ privateFunction: true })
   _revealCallback({ epoch }: { epoch: number }): void {
     assert(epoch == this.currentEpoch, "Epoch is wrong");
@@ -161,6 +174,9 @@ class PredictionMarket {
     this._safeStartRound(this.currentEpoch);
   }
 
+  /**
+   * @notice Start the first round
+   */
   @call({})
   genesisStartRound({}: {}): void {
     assert(!this.genesisStartOnce, "Genesis round is started");
@@ -170,6 +186,9 @@ class PredictionMarket {
     this.genesisStartOnce = true;
   }
 
+  /**
+   * @notice Request price and management of first 2 rounds
+   */
   @call({})
   genesisLockRound({}: {}): void {
     assert(this.genesisStartOnce, "Genesis round is not started");
@@ -178,6 +197,10 @@ class PredictionMarket {
     this._requestPrice(this.currentEpoch, "_genesisLockRoundCallback");
   }
 
+  /**
+   * @notice Start second round and lock first round
+   * @param epoch: epoch on each the price is updated; must be current epoch
+   */
   @call({ privateFunction: true })
   _genesisLockRoundCallback({ epoch }: { epoch: number }): void {
     assert(epoch == this.currentEpoch, "Epoch is wrong");
@@ -235,6 +258,10 @@ class PredictionMarket {
 
   // INTERNAL
 
+  /**
+   * @notice Calculate round results and rewards
+   * @param epoch: epoch on which the rewards are calculated
+   */
   _calculateRewards(epoch: number): void {
     let round = this._getRound(epoch);
 
@@ -269,6 +296,11 @@ class PredictionMarket {
     near.log(`Rewards for ${epoch} round calculated`);
   }
 
+  /**
+   * @notice Lock round i.e. stop accepting the bids for the round
+   * @param epoch: what epoch is to be locked
+   * @param price: asset's price at the epoch lock
+   */
   _safeLockRound(epoch: number, price: bigint): void {
     let round = this._getRound(epoch);
 
@@ -291,6 +323,11 @@ class PredictionMarket {
     near.log(`The round ${epoch} locked`);
   }
 
+  /**
+   * @notice End round and make available for rewards distribution
+   * @param epoch: what epoch is to be locked
+   * @param price: asset's price at which the epoch is closed
+   */
   _safeEndRound(epoch: number, price: bigint): void {
     let round = this._getRound(epoch);
 
@@ -311,6 +348,10 @@ class PredictionMarket {
     near.log(`The round ${epoch} closed`);
   }
 
+  /**
+   * @notice Check all constraints and start new round
+   * @param epoch: new epoch
+   */
   _safeStartRound(epoch: number): void {
     let oldRound = this._getRound(epoch - 2);
 
@@ -327,6 +368,10 @@ class PredictionMarket {
     this._startRound(epoch);
   }
 
+  /**
+   * @notice Start new round
+   * @param epoch: new epoch
+   */
   _startRound(epoch: number): void {
     let round = new Round(
       epoch.toFixed(),
@@ -343,7 +388,7 @@ class PredictionMarket {
       false
     );
     this._setRound(epoch, round);
-    near.log(`The roumd ${epoch} started`);
+    near.log(`The round ${epoch} started`);
   }
 
   // HELPERS
