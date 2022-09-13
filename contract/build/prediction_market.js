@@ -978,20 +978,21 @@ class Round {
 
 }
 
-var _dec, _dec2, _dec3, _dec4, _dec5, _dec6, _dec7, _dec8, _dec9, _dec10, _dec11, _dec12, _dec13, _dec14, _dec15, _dec16, _class, _class2;
+var _dec, _dec2, _dec3, _dec4, _dec5, _dec6, _dec7, _dec8, _dec9, _dec10, _dec11, _dec12, _dec13, _dec14, _dec15, _dec16, _dec17, _class, _class2;
 let PredictionMarket = (_dec = NearBindgen({}), _dec2 = initialize({}), _dec3 = view({}), _dec4 = view({}), _dec5 = call({
   payableFunction: true
-}), _dec6 = call({}), _dec7 = call({}), _dec8 = call({}), _dec9 = call({}), _dec10 = call({}), _dec11 = call({}), _dec12 = call({}), _dec13 = call({}), _dec14 = call({}), _dec15 = call({}), _dec16 = view({}), _dec(_class = (_class2 = class PredictionMarket {
+}), _dec6 = call({}), _dec7 = call({}), _dec8 = call({}), _dec9 = call({}), _dec10 = call({}), _dec11 = call({}), _dec12 = call({}), _dec13 = call({}), _dec14 = call({}), _dec15 = call({}), _dec16 = call({}), _dec17 = view({}), _dec(_class = (_class2 = class PredictionMarket {
   owner = "admin.idk.near";
   pendingOwner = "";
   manager = "manager.idk.near";
   oracle = "oracleprice.near";
   assetId = "wrap.near";
-  minBid = BigInt(1000);
-  duration = BigInt(1800);
-  feeRate = BigInt(10);
-  feePrecision = BigInt(1000);
-  feeTreasury = BigInt(0);
+  minBid = "1000";
+  duration = "1800";
+  feeRate = "10";
+  feePrecision = "1000";
+  feeTreasury = "0";
+  _temporary_price = "0";
   currentEpoch = 0;
   bids = new LookupMap("b");
   rounds = new LookupMap("r");
@@ -1037,18 +1038,18 @@ let PredictionMarket = (_dec = NearBindgen({}), _dec2 = initialize({}), _dec3 = 
   }) {
     assert(epoch == this.currentEpoch, "Wrong epoch"); // check bettable round
 
-    assert(attachedDeposit() >= this.minBid, "Bid is too low"); // check bid only once per round
+    assert(attachedDeposit() >= BigInt(this.minBid), "Bid is too low"); // check bid only once per round
 
     const amount = attachedDeposit();
 
     let round = this._getRound(epoch);
 
-    round.totalAmount += amount;
+    round.totalAmount = (BigInt(round.totalAmount) + amount).toString();
 
     if (position == Position.Bearish) {
-      round.bearAmount += amount;
+      round.bearAmount = (BigInt(round.bearAmount) + amount).toString();
     } else {
-      round.bullAmount += amount;
+      round.bullAmount = (BigInt(round.bullAmount) + amount).toString();
     }
 
     const sender = predecessorAccountId();
@@ -1077,14 +1078,14 @@ let PredictionMarket = (_dec = NearBindgen({}), _dec2 = initialize({}), _dec3 = 
     for (let epoch of epochs) {
       let round = this._getRound(epoch);
 
-      assert(round.startTimestamp != BigInt(0), "Round isn't started");
-      assert(round.closeTimestamp < blockTimestamp(), "Round isn't ended");
+      assert(BigInt(round.startTimestamp) != BigInt(0), "Round isn't started");
+      assert(BigInt(round.closeTimestamp) < blockTimestamp(), "Round isn't ended");
       assert(round.oracleCalled, "Oracle isn't called");
       assert(this.claimable(epoch, sender), "Not eligible");
 
       let betInfo = this._getBetInfo(epoch, sender);
 
-      const epochReward = betInfo.amount * round.rewardAmount / round.rewardBaseCalAmount;
+      const epochReward = betInfo.amount * BigInt(round.rewardAmount) / BigInt(round.rewardBaseCalAmount);
       reward += epochReward;
       betInfo.claimed = true;
 
@@ -1144,6 +1145,7 @@ let PredictionMarket = (_dec = NearBindgen({}), _dec2 = initialize({}), _dec3 = 
   }) {
     this._assertOwner();
 
+    BigInt(this.minBid);
     this.minBid = minBid;
   }
 
@@ -1152,6 +1154,7 @@ let PredictionMarket = (_dec = NearBindgen({}), _dec2 = initialize({}), _dec3 = 
   }) {
     this._assertOwner();
 
+    BigInt(this.duration);
     this.duration = duration;
   }
 
@@ -1160,7 +1163,15 @@ let PredictionMarket = (_dec = NearBindgen({}), _dec2 = initialize({}), _dec3 = 
   }) {
     this._assertOwner();
 
+    BigInt(this.feeRate);
     this.feeRate = feeRate;
+  }
+
+  setTemporaryPrice({
+    newPrice
+  }) {
+    BigInt(newPrice);
+    this._temporary_price = newPrice;
   }
 
   claimFee({
@@ -1168,9 +1179,9 @@ let PredictionMarket = (_dec = NearBindgen({}), _dec2 = initialize({}), _dec3 = 
   }) {
     this._assertOwner();
 
-    this._safeTransfer(receiver, this.feeTreasury);
+    this._safeTransfer(receiver, BigInt(this.feeTreasury));
 
-    this.feeTreasury = BigInt(0);
+    this.feeTreasury = "0";
   }
 
   transferOwnership({
@@ -1192,24 +1203,24 @@ let PredictionMarket = (_dec = NearBindgen({}), _dec2 = initialize({}), _dec3 = 
   _calculateRewards(epoch) {
     let round = this._getRound(epoch);
 
-    assert(round.rewardBaseCalAmount == BigInt(0) && round.rewardAmount == BigInt(0), "Reward calculated");
+    assert(BigInt(round.rewardBaseCalAmount) == BigInt(0) && BigInt(round.rewardAmount) == BigInt(0), "Reward calculated");
     let treasuryAmt;
 
     if (round.closePrice > round.lockPrice) {
       round.rewardBaseCalAmount = round.bullAmount;
-      treasuryAmt = round.totalAmount * this.feeRate / this.feePrecision;
-      round.rewardAmount = round.totalAmount - treasuryAmt;
+      treasuryAmt = BigInt(round.totalAmount) * BigInt(this.feeRate) / BigInt(this.feePrecision);
+      round.rewardAmount = (BigInt(round.totalAmount) - treasuryAmt).toString();
     } else if (round.closePrice < round.lockPrice) {
       round.rewardBaseCalAmount = round.bearAmount;
-      treasuryAmt = round.totalAmount * this.feeRate / this.feePrecision;
-      round.rewardAmount = round.totalAmount - treasuryAmt;
+      treasuryAmt = BigInt(round.totalAmount) * BigInt(this.feeRate) / BigInt(this.feePrecision);
+      round.rewardAmount = (BigInt(round.totalAmount) - treasuryAmt).toString();
     } else {
-      round.rewardBaseCalAmount = BigInt(0);
-      round.rewardAmount = BigInt(0);
-      treasuryAmt = round.totalAmount;
+      round.rewardBaseCalAmount = "0";
+      round.rewardAmount = "0";
+      treasuryAmt = BigInt(round.totalAmount);
     }
 
-    this.feeTreasury += treasuryAmt;
+    this.feeTreasury = (BigInt(this.feeTreasury) + treasuryAmt).toString();
 
     this._setRound(epoch, round);
 
@@ -1219,10 +1230,10 @@ let PredictionMarket = (_dec = NearBindgen({}), _dec2 = initialize({}), _dec3 = 
   _safeLockRound(epoch, price) {
     let round = this._getRound(epoch);
 
-    assert(round.startTimestamp != BigInt(0), "Round n-1 is not started");
-    assert(round.lockTimestamp < blockTimestamp(), "Lock is too early");
-    round.closeTimestamp = blockTimestamp() + this.duration;
-    round.lockPrice = price;
+    assert(BigInt(round.startTimestamp) != BigInt(0), "Round n-1 is not started");
+    assert(BigInt(round.lockTimestamp) < blockTimestamp(), "Lock is too early");
+    round.closeTimestamp = (blockTimestamp() + BigInt(this.duration)).toString();
+    round.lockPrice = price.toString();
 
     this._setRound(epoch, round);
 
@@ -1232,9 +1243,9 @@ let PredictionMarket = (_dec = NearBindgen({}), _dec2 = initialize({}), _dec3 = 
   _safeEndRound(epoch, price) {
     let round = this._getRound(epoch);
 
-    assert(round.lockTimestamp != BigInt(0), "Round n-1 is not started");
-    assert(round.closeTimestamp < blockTimestamp(), "End is too early");
-    round.closePrice = price;
+    assert(BigInt(round.lockTimestamp) != BigInt(0), "Round n-1 is not started");
+    assert(BigInt(round.closeTimestamp) < blockTimestamp(), "End is too early");
+    round.closePrice = price.toString();
     round.oracleCalled = true;
 
     this._setRound(epoch, round);
@@ -1246,14 +1257,14 @@ let PredictionMarket = (_dec = NearBindgen({}), _dec2 = initialize({}), _dec3 = 
     let oldRound = this._getRound(epoch - 2);
 
     assert(this.genesisStartOnce, "Init game first");
-    assert(oldRound.closeTimestamp != BigInt(0), "Round n-2 is not ended");
-    assert(oldRound.closeTimestamp < blockTimestamp(), "Round n-2 is too young");
+    assert(BigInt(oldRound.closeTimestamp) != BigInt(0), "Round n-2 is not ended");
+    assert(BigInt(oldRound.closeTimestamp) < blockTimestamp(), "Round n-2 is too young");
 
     this._startRound(epoch);
   }
 
   _startRound(epoch) {
-    let round = new Round(epoch, blockTimestamp(), blockTimestamp() + this.duration, blockTimestamp() + BigInt(2) * this.duration, BigInt(0), BigInt(0), BigInt(0), BigInt(0), BigInt(0), BigInt(0), BigInt(0), false);
+    let round = new Round(epoch.toFixed(), blockTimestamp().toString(), (blockTimestamp() + BigInt(this.duration)).toString(), (blockTimestamp() + BigInt(2) * BigInt(this.duration)).toString(), "0", "0", "0", "0", "0", "0", "0", false);
 
     this._setRound(epoch, round);
 
@@ -1326,10 +1337,10 @@ let PredictionMarket = (_dec = NearBindgen({}), _dec2 = initialize({}), _dec3 = 
       return false;
     }
 
-    return round.oracleCalled && betInfo.amount != BigInt(0) && !betInfo.claimed && (round.closePrice > round.lockPrice && betInfo.position == Position.Bullish || round.closePrice < round.lockPrice && betInfo.position == Position.Bearish);
+    return round.oracleCalled && betInfo.amount != BigInt(0) && !betInfo.claimed && (BigInt(round.closePrice) > BigInt(round.lockPrice) && betInfo.position == Position.Bullish || BigInt(round.closePrice) < BigInt(round.lockPrice) && betInfo.position == Position.Bearish);
   }
 
-}, (_applyDecoratedDescriptor(_class2.prototype, "init", [_dec2], Object.getOwnPropertyDescriptor(_class2.prototype, "init"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "getState", [_dec3], Object.getOwnPropertyDescriptor(_class2.prototype, "getState"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "getRound", [_dec4], Object.getOwnPropertyDescriptor(_class2.prototype, "getRound"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "bet", [_dec5], Object.getOwnPropertyDescriptor(_class2.prototype, "bet"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "claim", [_dec6], Object.getOwnPropertyDescriptor(_class2.prototype, "claim"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "reveal", [_dec7], Object.getOwnPropertyDescriptor(_class2.prototype, "reveal"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "genesisStartRound", [_dec8], Object.getOwnPropertyDescriptor(_class2.prototype, "genesisStartRound"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "genesisLockRound", [_dec9], Object.getOwnPropertyDescriptor(_class2.prototype, "genesisLockRound"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "setMinBid", [_dec10], Object.getOwnPropertyDescriptor(_class2.prototype, "setMinBid"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "setDuration", [_dec11], Object.getOwnPropertyDescriptor(_class2.prototype, "setDuration"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "setFeeRate", [_dec12], Object.getOwnPropertyDescriptor(_class2.prototype, "setFeeRate"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "claimFee", [_dec13], Object.getOwnPropertyDescriptor(_class2.prototype, "claimFee"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "transferOwnership", [_dec14], Object.getOwnPropertyDescriptor(_class2.prototype, "transferOwnership"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "confirmTransferOwnership", [_dec15], Object.getOwnPropertyDescriptor(_class2.prototype, "confirmTransferOwnership"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "claimable", [_dec16], Object.getOwnPropertyDescriptor(_class2.prototype, "claimable"), _class2.prototype)), _class2)) || _class);
+}, (_applyDecoratedDescriptor(_class2.prototype, "init", [_dec2], Object.getOwnPropertyDescriptor(_class2.prototype, "init"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "getState", [_dec3], Object.getOwnPropertyDescriptor(_class2.prototype, "getState"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "getRound", [_dec4], Object.getOwnPropertyDescriptor(_class2.prototype, "getRound"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "bet", [_dec5], Object.getOwnPropertyDescriptor(_class2.prototype, "bet"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "claim", [_dec6], Object.getOwnPropertyDescriptor(_class2.prototype, "claim"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "reveal", [_dec7], Object.getOwnPropertyDescriptor(_class2.prototype, "reveal"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "genesisStartRound", [_dec8], Object.getOwnPropertyDescriptor(_class2.prototype, "genesisStartRound"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "genesisLockRound", [_dec9], Object.getOwnPropertyDescriptor(_class2.prototype, "genesisLockRound"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "setMinBid", [_dec10], Object.getOwnPropertyDescriptor(_class2.prototype, "setMinBid"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "setDuration", [_dec11], Object.getOwnPropertyDescriptor(_class2.prototype, "setDuration"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "setFeeRate", [_dec12], Object.getOwnPropertyDescriptor(_class2.prototype, "setFeeRate"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "setTemporaryPrice", [_dec13], Object.getOwnPropertyDescriptor(_class2.prototype, "setTemporaryPrice"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "claimFee", [_dec14], Object.getOwnPropertyDescriptor(_class2.prototype, "claimFee"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "transferOwnership", [_dec15], Object.getOwnPropertyDescriptor(_class2.prototype, "transferOwnership"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "confirmTransferOwnership", [_dec16], Object.getOwnPropertyDescriptor(_class2.prototype, "confirmTransferOwnership"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "claimable", [_dec17], Object.getOwnPropertyDescriptor(_class2.prototype, "claimable"), _class2.prototype)), _class2)) || _class);
 function claimable() {
   let _state = PredictionMarket._getState();
 
@@ -1406,6 +1417,27 @@ function claimFee() {
   let _args = PredictionMarket._getArgs();
 
   let _result = _contract.claimFee(_args);
+
+  PredictionMarket._saveToStorage(_contract);
+
+  if (_result !== undefined) if (_result && _result.constructor && _result.constructor.name === "NearPromise") _result.onReturn();else env.value_return(PredictionMarket._serialize(_result));
+}
+function setTemporaryPrice() {
+  let _state = PredictionMarket._getState();
+
+  if (!_state && PredictionMarket._requireInit()) {
+    throw new Error("Contract must be initialized");
+  }
+
+  let _contract = PredictionMarket._create();
+
+  if (_state) {
+    PredictionMarket._reconstruct(_contract, _state);
+  }
+
+  let _args = PredictionMarket._getArgs();
+
+  let _result = _contract.setTemporaryPrice(_args);
 
   PredictionMarket._saveToStorage(_contract);
 
@@ -1631,5 +1663,5 @@ function init() {
   if (_result !== undefined) if (_result && _result.constructor && _result.constructor.name === "NearPromise") _result.onReturn();else env.value_return(PredictionMarket._serialize(_result));
 }
 
-export { bet, claim, claimFee, claimable, confirmTransferOwnership, genesisLockRound, genesisStartRound, getRound, getState, init, reveal, setDuration, setFeeRate, setMinBid, transferOwnership };
+export { bet, claim, claimFee, claimable, confirmTransferOwnership, genesisLockRound, genesisStartRound, getRound, getState, init, reveal, setDuration, setFeeRate, setMinBid, setTemporaryPrice, transferOwnership };
 //# sourceMappingURL=prediction_market.js.map
