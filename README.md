@@ -1,7 +1,5 @@
-# 🍬 idk.finance - I DONT KNOW Finance
+# 🍬 [idk.finance](https://idk.finance) - I DONT KNOW Finance
 
-
-### [https://idk.finance](https://idk.finance)
 
 This app was initialized with [create-near-app]
 
