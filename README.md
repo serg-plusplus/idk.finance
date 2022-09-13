@@ -1,5 +1,5 @@
 # 🍬 idk.finance - I DONT KNOW Finance
-==================
+
 
 ### [https://idk.finance](https://idk.finance)
 
