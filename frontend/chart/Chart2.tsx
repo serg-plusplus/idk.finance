@@ -63,7 +63,7 @@ const BrushChart: FC = withTooltip<BrushProps, TooltipData>(({
   tooltipData,
   tooltipTop = 0,
   tooltipLeft = 0,
-}: BrushProps & WithTooltipProvidedProps<TooltipData>) => {
+}) => {
   const brushRef = useRef<BaseBrush | null>(null);
   const [filteredStock, setFilteredStock] = useState(stock.prices);
 
@@ -184,7 +184,7 @@ const BrushChart: FC = withTooltip<BrushProps, TooltipData>(({
             brushDirection="horizontal"
             initialBrushPosition={initialBrushPosition}
             onChange={onBrushChange}
-            onClick={() => setFilteredStock(stock)}
+            onClick={() => setFilteredStock(stock.prices)}
             selectedBoxStyle={selectedBrushStyle}
             useWindowMoveEvents
             renderBrushHandle={(props) => <BrushHandle {...props} />}
