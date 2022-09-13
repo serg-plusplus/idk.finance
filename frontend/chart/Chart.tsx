@@ -4,7 +4,7 @@ import appleStock, { AppleStock } from "@visx/mock-data/lib/mocks/appleStock";
 import { curveMonotoneX } from "@visx/curve";
 import { GridRows, GridColumns } from "@visx/grid";
 import { scaleTime, scaleLinear } from "@visx/scale";
-import {AxisLeft, AxisBottom, Axis} from '@visx/axis';
+import { AxisLeft, AxisBottom, Axis } from "@visx/axis";
 import {
   withTooltip,
   Tooltip,
@@ -18,7 +18,7 @@ import { max, extent, bisector } from "d3-array";
 import { timeFormat } from "d3-time-format";
 
 import { ChartData, ChartPoint } from "./chart-data";
-import {Card} from "@nextui-org/react";
+import { Card } from "@nextui-org/react";
 
 type TooltipData = ChartPoint;
 
@@ -40,7 +40,7 @@ const formatDate = timeFormat("%b %d, '%y");
 // accessors
 const getDate = (d: ChartPoint) => new Date(d[0]);
 const getStockValue = (d: ChartPoint) => d[1];
-const bisectDate = bisector<ChartPoint, Date>((d) => new Date(d[0])).left;
+const bisectDate = bisector((d) => new Date(d[0])).left;
 
 export type AreaProps = {
   width: number;
@@ -62,7 +62,7 @@ export default withTooltip<AreaProps, TooltipData>(
     stock = { prices: [] },
   }: AreaProps & WithTooltipProvidedProps<TooltipData>) => {
     if (width < 10) return null;
-    console.log('prices', stock.prices)
+    console.log("prices", stock.prices);
 
     // bounds
     const innerWidth = width - margin.left - margin.right;

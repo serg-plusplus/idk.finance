@@ -102,6 +102,8 @@ export const [IdkStateProvider, useIdkState] = constate(
               )
             );
 
+            console.info("Latest rounds", latestRounds);
+
             return { state, latestRounds };
           })(),
           getChartData(),
