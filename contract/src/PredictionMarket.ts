@@ -23,12 +23,13 @@ class PredictionMarket {
   oracle: string = "oracleprice.near";
   assetId: string = "wrap.near";
 
-  minBid: bigint = BigInt(1000);
-  duration: bigint = BigInt(1800);
+  minBid: string = "1000";
+  duration: string = "1800";
 
-  feeRate: bigint = BigInt(10);
-  feePrecision: bigint = BigInt(1000);
-  feeTreasury: bigint = BigInt(0);
+  feeRate: string = "10";
+  feePrecision: string = "1000";
+  feeTreasury: string = "0";
+  price: string = "0";
 
   currentEpoch: number = 0;
 
@@ -74,7 +75,10 @@ class PredictionMarket {
   bet({ epoch, position }: { epoch: number; position: Position }): void {
     assert(epoch == this.currentEpoch, "Wrong epoch");
     // check bettable round
-    assert((near.attachedDeposit() as bigint) >= this.minBid, "Bid is too low");
+    assert(
+      (near.attachedDeposit() as bigint) >= BigInt(this.minBid),
+      "Bid is too low"
+    );
     // check bid only once per round
 
     const amount: bigint = near.attachedDeposit();
@@ -120,20 +124,26 @@ class PredictionMarket {
   // ADMIN
 
   @call({})
-  setMinBid({ minBid }: { minBid: bigint }): void {
+  setMinBid({ minBid }: { minBid: string }): void {
     this._assertOwner();
+    BigInt(minBid);
+
     this.minBid = minBid;
   }
 
   @call({})
-  setDuration({ duration }: { duration: bigint }): void {
+  setDuration({ duration }: { duration: string }): void {
     this._assertOwner();
+    BigInt(duration);
+
     this.duration = duration;
   }
 
   @call({})
-  setFeeRate({ feeRate }: { feeRate: bigint }): void {
+  setFeeRate({ feeRate }: { feeRate: string }): void {
     this._assertOwner();
+    BigInt(feeRate);
+
     this.feeRate = feeRate;
   }
 
@@ -141,8 +151,15 @@ class PredictionMarket {
   claimFee({ receiver }: { receiver: string }): void {
     this._assertOwner();
     const promise = near.promiseBatchCreate(receiver);
-    near.promiseBatchActionTransfer(promise, this.feeTreasury);
-    this.feeTreasury = BigInt(0);
+    near.promiseBatchActionTransfer(promise, BigInt(this.feeTreasury));
+    this.feeTreasury = "0";
+  }
+
+  @call({})
+  setPrice({ newPrice }: { newPrice: string }): void {
+    BigInt(newPrice);
+
+    this.price = newPrice;
   }
 
   @call({})
@@ -164,22 +181,27 @@ class PredictionMarket {
     let round = this._getRound(epoch);
 
     assert(
-      round.rewardBaseCalAmount == BigInt(0) && round.rewardAmount == BigInt(0),
+      BigInt(round.rewardBaseCalAmount) == BigInt(0) &&
+        BigInt(round.rewardAmount) === BigInt(0),
       "Reward calculated"
     );
 
     let treasuryAmt;
     if (round.closePrice > round.lockPrice) {
       round.rewardBaseCalAmount = round.bullAmount;
-      treasuryAmt = (round.totalAmount * this.feeRate) / this.feePrecision;
-      round.rewardAmount = round.totalAmount - treasuryAmt;
+      treasuryAmt =
+        (BigInt(round.totalAmount) * BigInt(this.feeRate)) /
+        BigInt(this.feePrecision);
+      round.rewardAmount = (BigInt(round.totalAmount) - treasuryAmt).toString();
     } else if (round.closePrice < round.lockPrice) {
       round.rewardBaseCalAmount = round.bearAmount;
-      treasuryAmt = (round.totalAmount * this.feeRate) / this.feePrecision;
-      round.rewardAmount = round.totalAmount - treasuryAmt;
+      treasuryAmt =
+        (BigInt(round.totalAmount) * BigInt(this.feeRate)) /
+        BigInt(this.feePrecision);
+      round.rewardAmount = (BigInt(round.totalAmount) - treasuryAmt).toString();
     } else {
-      round.rewardBaseCalAmount = BigInt(0);
-      round.rewardAmount = BigInt(0);
+      round.rewardBaseCalAmount = "0";
+      round.rewardAmount = "0";
       treasuryAmt = round.totalAmount;
     }
 
@@ -192,11 +214,19 @@ class PredictionMarket {
   _safeEndRound(epoch: number, price: bigint): void {
     let round = this._getRound(epoch);
 
-    assert(round.startTimestamp != BigInt(0), "Round n-1 is not started");
-    assert(round.lockTimestamp < near.blockTimestamp(), "Lock is too early");
+    assert(
+      BigInt(round.startTimestamp) != BigInt(0),
+      "Round n-1 is not started"
+    );
+    assert(
+      BigInt(round.lockTimestamp) < near.blockTimestamp(),
+      "Lock is too early"
+    );
 
-    round.closeTimestamp = near.blockTimestamp() + this.duration;
-    round.lockPrice = price;
+    round.closeTimestamp = (
+      near.blockTimestamp() + BigInt(this.duration)
+    ).toString();
+    round.lockPrice = price.toString();
 
     this._setRound(epoch, round);
 
@@ -206,10 +236,16 @@ class PredictionMarket {
   _safeLockRound(epoch: number, price: bigint): void {
     let round = this._getRound(epoch);
 
-    assert(round.lockTimestamp != BigInt(0), "Round n-1 is not started");
-    assert(round.closeTimestamp < near.blockTimestamp(), "End is too early");
+    assert(
+      BigInt(round.lockTimestamp) != BigInt(0),
+      "Round n-1 is not started"
+    );
+    assert(
+      BigInt(round.closeTimestamp) < near.blockTimestamp(),
+      "End is too early"
+    );
 
-    round.closePrice = price;
+    round.closePrice = price.toString();
 
     this._setRound(epoch, round);
 
@@ -220,9 +256,12 @@ class PredictionMarket {
     let oldRound = this._getRound(epoch - 2);
 
     assert(this.genesisStartOnce, "Init game first");
-    assert(oldRound.closeTimestamp != BigInt(0), "Round n-2 is not ended");
     assert(
-      oldRound.closeTimestamp < near.blockTimestamp(),
+      BigInt(oldRound.closeTimestamp) != BigInt(0),
+      "Round n-2 is not ended"
+    );
+    assert(
+      BigInt(oldRound.closeTimestamp) < near.blockTimestamp(),
       "Round n-2 is too young"
     );
 
@@ -231,17 +270,17 @@ class PredictionMarket {
 
   _startRound(epoch: number): void {
     let round = new Round(
-      epoch,
-      near.blockTimestamp(),
-      near.blockTimestamp() + this.duration,
-      near.blockTimestamp() + BigInt(2) * this.duration,
-      BigInt(0),
-      BigInt(0),
-      BigInt(0),
-      BigInt(0),
-      BigInt(0),
-      BigInt(0),
-      BigInt(0),
+      epoch.toFixed(),
+      near.blockTimestamp().toString(),
+      (near.blockTimestamp() + BigInt(this.duration)).toString(),
+      (near.blockTimestamp() + BigInt(2) * BigInt(this.duration)).toString(),
+      "0",
+      "0",
+      "0",
+      "0",
+      "0",
+      "0",
+      "0",
       false
     );
     this._setRound(epoch, round);
@@ -292,9 +331,10 @@ class PredictionMarket {
     );
   }
 
+  // @view()
   _getPrice(): bigint {
     // TODO
-    return BigInt(4.22);
+    return BigInt(this.price);
   }
 
   _setBetInfo(epoch: number, owner: string, betInfo: BetInfo): void {

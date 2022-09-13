@@ -114,7 +114,7 @@ export default withTooltip<AreaProps, TooltipData>(
     );
 
     return (
-      <div>
+      <>
         <svg width={width} height={height}>
           <rect
             x={0}
@@ -232,7 +232,7 @@ export default withTooltip<AreaProps, TooltipData>(
             </Tooltip>
           </div>
         )}
-      </div>
+      </>
     );
   }
 );
