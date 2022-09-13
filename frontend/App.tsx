@@ -12,7 +12,7 @@ import { useIdkState } from "./idk-state";
 import Header from "./Header/Header";
 
 const App: React.FC = () => {
-  const { isSignedIn, contract, wallet } = useIdkState();
+  const { isSignedIn, contract, wallet, getState } = useIdkState();
 
   const [valueFromBlockchain, setValueFromBlockchain] = React.useState();
   const [uiPleaseWait, setUiPleaseWait] = React.useState(true);
@@ -22,13 +22,13 @@ const App: React.FC = () => {
 
   // Get blockchian state once on component load
   React.useEffect(() => {
-    contract
-      .getGreeting()
-      .then(setValueFromBlockchain)
-      .catch(alert)
-      .finally(() => {
-        setUiPleaseWait(false);
-      });
+    getState().then(console.info).catch(console.error);
+    // getState
+    //   .then(setValueFromBlockchain)
+    //   .catch(alert)
+    //   .finally(() => {
+    //     setUiPleaseWait(false);
+    //   });
 
     getChartData().then(setCoingeckoData);
   }, []);
@@ -42,42 +42,6 @@ const App: React.FC = () => {
           greeting={valueFromBlockchain}
           onClick={() => wallet.signIn()}
         />
-
-        {/*<Card css={{ p: "$6", mw: "400px" }}>*/}
-        {/*  <Card.Header>*/}
-        {/*    <img*/}
-        {/*      alt="nextui logo"*/}
-        {/*      src="https://avatars.githubusercontent.com/u/86160567?s=200&v=4"*/}
-        {/*      width="34px"*/}
-        {/*      height="34px"*/}
-        {/*    />*/}
-        {/*    <Grid.Container css={{ pl: "$6" }}>*/}
-        {/*      <Grid xs={12}>*/}
-        {/*        <Text h4 css={{ lineHeight: "$xs" }}>*/}
-        {/*          Next UI*/}
-        {/*        </Text>*/}
-        {/*      </Grid>*/}
-        {/*      <Grid xs={12}>*/}
-        {/*        <Text css={{ color: "$accents8" }}>nextui.org</Text>*/}
-        {/*      </Grid>*/}
-        {/*    </Grid.Container>*/}
-        {/*  </Card.Header>*/}
-        {/*  <Card.Body css={{ py: "$2" }}>*/}
-        {/*    <Text>*/}
-        {/*      Make beautiful websites regardless of your design experience.*/}
-        {/*    </Text>*/}
-        {/*  </Card.Body>*/}
-        {/*  <Card.Footer>*/}
-        {/*    <Link*/}
-        {/*      icon*/}
-        {/*      color="primary"*/}
-        {/*      target="_blank"*/}
-        {/*      href="https://github.com/nextui-org/nextui"*/}
-        {/*    >*/}
-        {/*      Visit source code on GitHub.*/}
-        {/*    </Link>*/}
-        {/*  </Card.Footer>*/}
-        {/*</Card>*/}
       </>
     );
   }
@@ -96,8 +60,6 @@ const App: React.FC = () => {
         setUiPleaseWait(false);
       });
   }
-
-  console.info("KEK");
 
   return (
     <>

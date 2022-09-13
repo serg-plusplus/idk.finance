@@ -54,11 +54,11 @@ class PredictionMarket {
       manager: this.manager,
       oracle: this.oracle,
       assetId: this.assetId,
-      minBid: this.minBid,
-      duration: this.duration,
-      feeRate: this.feeRate,
-      feePrecision: this.feePrecision,
-      feeTreasury: this.feeTreasury,
+      minBid: this.minBid.toString(),
+      duration: this.duration.toString(),
+      feeRate: this.feeRate.toString(),
+      feePrecision: this.feePrecision.toString(),
+      feeTreasury: this.feeTreasury.toString(),
       currentEpoch: this.currentEpoch,
     };
   }
