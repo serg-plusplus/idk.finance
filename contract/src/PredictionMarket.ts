@@ -78,12 +78,16 @@ class PredictionMarket {
    */
   @call({ payableFunction: true })
   bet({ epoch, position }: { epoch: number; position: Position }): void {
+    const sender = near.predecessorAccountId();
+    const userRounds = this._getUserRounds(sender);
+
     assert(epoch == this.currentEpoch, "Wrong epoch");
     assert(
       (near.attachedDeposit() as bigint) >= BigInt(this.minBid),
       "Bid is too low"
     );
-    // TODO: check bid only once per round
+    assert(position == Position.None, "Wrong epoch");
+    assert(userRounds.contains(epoch), "Wrong epoch");
 
     const amount: bigint = near.attachedDeposit();
     let round = this._getRound(epoch);
@@ -94,8 +98,6 @@ class PredictionMarket {
       round.bullAmount = (BigInt(round.bullAmount) + amount).toString();
     }
 
-    const sender = near.predecessorAccountId();
-    const userRounds = this._getUserRounds(sender);
     let betInfo = this._getBetInfo(epoch, sender);
     betInfo.position = position;
     betInfo.amount = amount.toString();
