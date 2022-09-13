@@ -6,16 +6,22 @@ import {
   initialize,
   assert,
   LookupMap,
+  UnorderedSet,
 } from "near-sdk-js";
 
 @NearBindgen({})
 class PredictionMarket {
+  genesisStartOnce: boolean;
+
   owner: string = "admin.idk.near";
   pendingOwner: string = "";
   manager: string = "manager.idk.near";
 
+  oracle: string = "oracleprice.near";
+  assetId: string = "wrap.near";
+
   minBid: bigint = BigInt(1000);
-  duration: number = 1800;
+  duration: bigint = BigInt(1800);
 
   feeRate: number = 10;
   feePrecision: number = 1000;
@@ -48,19 +54,54 @@ class PredictionMarket {
     round.bearAmount += amount;
 
     const sender = near.predecessorAccountId();
+    const userRounds = this._getUserRounds(sender);
     let betInfo = this._getBetInfo(epoch, sender);
     betInfo.position = Position.Bearish;
     betInfo.amount = amount;
+    userRounds.set(epoch);
+
     this._setBetInfo(epoch, sender, betInfo);
-    // add epoch to userRounds
+    this._setUserRounds(sender, userRounds);
 
     near.log(`${sender} is bearish in the ${epoch} epoch. Bid is ${amount}`);
+  }
+
+  @call({ payableFunction: true })
+  betBull({ epoch }: { epoch: number }): void {
+    assert(epoch == this.currentEpoch, "Wrong epoch");
+    // check bettable round
+    assert((near.attachedDeposit() as bigint) >= this.minBid, "Bid is too low");
+    // check bid only once per round
+
+    const amount: bigint = near.attachedDeposit();
+    let round = this._getRound(epoch);
+    round.totalAmount += amount;
+    round.bullAmount += amount;
+
+    const sender = near.predecessorAccountId();
+    const userRounds = this._getUserRounds(sender);
+    let betInfo = this._getBetInfo(epoch, sender);
+    betInfo.position = Position.Bullish;
+    betInfo.amount = amount;
+    userRounds.set(epoch);
+
+    this._setBetInfo(epoch, sender, betInfo);
+    this._setUserRounds(sender, userRounds);
+
+    near.log(`${sender} is bullish in the ${epoch} epoch. Bid is ${amount}`);
   }
 
   // ORACLE
 
   @call({})
-  reveal({ minBid }: { minBid: bigint }): void {}
+  reveal({}: {}): void {
+    // get price
+    // lock n - 1 round
+    // end n - 2 round
+    // distribute rewards
+    this.currentEpoch += 1;
+    this._safeStartRound(this.currentEpoch);
+  }
 
   // ADMIN
 
@@ -71,7 +112,7 @@ class PredictionMarket {
   }
 
   @call({})
-  setDuration({ duration }: { duration: number }): void {
+  setDuration({ duration }: { duration: bigint }): void {
     this._assertOwner();
     this.duration = duration;
   }
@@ -104,6 +145,40 @@ class PredictionMarket {
   }
 
   // INTERNAL
+
+  _safeStartRound(epoch: number): void {
+    let oldRound = this._getRound(epoch - 2);
+
+    assert(this.genesisStartOnce, "Init game first");
+    assert(oldRound.closeTimestamp != BigInt(0), "Round n-2 is not ended");
+    assert(
+      oldRound.closeTimestamp < near.blockTimestamp(),
+      "Round n-2 is too young"
+    );
+
+    this._startRound(epoch);
+  }
+
+  _startRound(epoch: number): void {
+    let round = new Round(
+      epoch,
+      near.blockTimestamp(),
+      near.blockTimestamp() + this.duration,
+      near.blockTimestamp() + BigInt(2) * this.duration,
+      BigInt(0),
+      BigInt(0),
+      BigInt(0),
+      BigInt(0),
+      BigInt(0),
+      BigInt(0),
+      BigInt(0),
+      false
+    );
+    this._setRound(epoch, round);
+    near.log(`The roumd ${epoch} started`);
+  }
+
+  // HELPERS
   _assertOwner(): void {
     assert(near.predecessorAccountId() == this.owner, "Not an owner");
   }
@@ -120,6 +195,14 @@ class PredictionMarket {
     return new BetInfo(betInfo.position, betInfo.amount, betInfo.claimed);
   }
 
+  _getUserRounds(owner: string): UnorderedSet {
+    let userRounds = this.userRounds.get(owner);
+    if (userRounds === null) {
+      return new UnorderedSet(owner);
+    }
+    return userRounds as UnorderedSet;
+  }
+
   _getRound(epoch: number): Round {
     let round = this.rounds.get(String.fromCharCode(epoch));
     if (round === null) {
@@ -132,9 +215,15 @@ class PredictionMarket {
     this.rounds.set(String.fromCharCode(epoch) + owner, betInfo);
   }
 
-  // bet
+  _setRound(epoch: number, roumd: Round): void {
+    this.rounds.set(String.fromCharCode(epoch), roumd);
+  }
+
+  _setUserRounds(owner: string, userRounds: UnorderedSet): void {
+    this.userRounds.set(owner, userRounds);
+  }
+
   // claim
   // reveal
   // setOracle
-  // setFee
 }
