@@ -1342,8 +1342,8 @@ let PredictionMarket = (_dec = NearBindgen({}), _dec2 = initialize({}), _dec3 = 
 
   getState() {
     return {
-      genesisLockOnce: this.genesisLockOnce,
-      genesisStartOnce: this.genesisStartOnce,
+      genesisLockOnce: this.genesisLockOnce ? 1 : 0,
+      genesisStartOnce: this.genesisStartOnce ? 1 : 0,
       owner: this.owner,
       pendingOwner: this.pendingOwner,
       oracle: this.oracle,
