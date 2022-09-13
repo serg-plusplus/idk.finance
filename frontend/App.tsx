@@ -9,6 +9,7 @@ import { EducationalText, SignInPrompt, SignOutButton } from "./ui-components";
 import Chart from "./chart/Chart";
 import { ChartData, getChartData } from "./chart/chart-data";
 import { useIdkState } from "./idk-state";
+import Header from "./Header/Header";
 
 const App: React.FC = () => {
   const { isSignedIn, contract, wallet } = useIdkState();
@@ -100,6 +101,7 @@ const App: React.FC = () => {
 
   return (
     <>
+      <Header/>
       <SignOutButton
         accountId={wallet.accountId}
         onClick={() => wallet.signOut()}

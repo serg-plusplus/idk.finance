@@ -1,3 +1,6 @@
 export * from './Discovery'
 export * from './Search'
 export * from './ChevronRight'
+export * from './User'
+export * from './LightMode'
+export * from './DarkMode'
