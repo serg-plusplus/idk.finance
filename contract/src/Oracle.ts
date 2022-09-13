@@ -16,5 +16,5 @@ export interface Asset {
 export interface PricesResponse {
   timestamp: string;
   recency_duration_sec: number;
-  prices: Price[];
+  prices: Asset[];
 }

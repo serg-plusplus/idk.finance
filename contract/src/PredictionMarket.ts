@@ -7,9 +7,11 @@ import {
   assert,
   LookupMap,
   UnorderedSet,
+  NearPromise,
 } from "near-sdk-js";
 import { BetInfo, Position } from "./BetInfo";
 import { Round } from "./Round";
+import { PricesResponse } from "./Oracle";
 
 @NearBindgen({})
 class PredictionMarket {
@@ -18,9 +20,11 @@ class PredictionMarket {
 
   owner: string = "admin.idk.near";
   pendingOwner: string = "";
-  manager: string = "manager.idk.near";
 
   oracle: string = "oracleprice.near";
+  oracleParams: string = JSON.stringify({ asset_ids: ["wrap.near"] });
+  oracleGas: string = "50000000000000";
+  timeDelay: string = "1800";
   assetId: string = "wrap.near";
 
   minBid: string = "1000";
@@ -30,18 +34,16 @@ class PredictionMarket {
   feePrecision: string = "1000";
   feeTreasury: string = "0";
 
-  _temporary_price: string = "0";
-
   currentEpoch: number = 0;
 
   bids: LookupMap = new LookupMap("b");
   rounds: LookupMap = new LookupMap("r");
   userRounds: LookupMap = new LookupMap("u");
+  prices: LookupMap = new LookupMap("p");
 
   @initialize({})
   init({ owner, manager }: { owner: string; manager: string }) {
     this.owner = owner;
-    this.manager = manager;
   }
 
   // VIEW
@@ -53,9 +55,7 @@ class PredictionMarket {
       genesisStartOnce: this.genesisStartOnce,
       owner: this.owner,
       pendingOwner: this.pendingOwner,
-      manager: this.manager,
       oracle: this.oracle,
-      assetId: this.assetId,
       minBid: this.minBid.toString(),
       duration: this.duration.toString(),
       feeRate: this.feeRate.toString(),
@@ -145,6 +145,13 @@ class PredictionMarket {
       "Genesis rounds aren't finished"
     );
 
+    this._requestPrice(this.currentEpoch, "_revealCallback");
+  }
+
+  @call({ privateFunction: true })
+  _revealCallback({ epoch }: { epoch: number }): void {
+    assert(epoch == this.currentEpoch, "Epoch is wrong");
+
     let price = this._getPrice();
     this._safeLockRound(this.currentEpoch, price);
     this._safeEndRound(this.currentEpoch - 1, price);
@@ -167,6 +174,13 @@ class PredictionMarket {
   genesisLockRound({}: {}): void {
     assert(this.genesisStartOnce, "Genesis round is not started");
     assert(!this.genesisLockOnce, "Genesis round is locked");
+
+    this._requestPrice(this.currentEpoch, "_genesisLockRoundCallback");
+  }
+
+  @call({ privateFunction: true })
+  _genesisLockRoundCallback({ epoch }: { epoch: number }): void {
+    assert(epoch == this.currentEpoch, "Epoch is wrong");
 
     let price = this._getPrice();
     this._safeLockRound(this.currentEpoch, price);
@@ -197,13 +211,6 @@ class PredictionMarket {
     this._assertOwner();
     BigInt(this.feeRate);
     this.feeRate = feeRate;
-  }
-
-  @call({})
-  setTemporaryPrice({ newPrice }: { newPrice: string }): void {
-    BigInt(newPrice);
-
-    this._temporary_price = newPrice;
   }
 
   @call({})
@@ -384,8 +391,32 @@ class PredictionMarket {
   }
 
   _getPrice(): bigint {
-    // TODO
-    return BigInt(4.22);
+    const pricesInfo = JSON.parse(near.promiseResult(0)) as PricesResponse;
+    let nearInfo = pricesInfo.prices[0];
+
+    assert(nearInfo.asset_id == this.assetId, "Asset id is wrong");
+
+    return BigInt(nearInfo.price.multiplier);
+  }
+
+  _requestPrice(epoch: number, callback: string): NearPromise {
+    const promise = NearPromise.new(this.oracle)
+      .functionCall(
+        "get_price_data",
+        this.oracleParams,
+        BigInt(0),
+        BigInt(this.oracleGas)
+      )
+      .then(
+        NearPromise.new(near.currentAccountId()).functionCall(
+          callback,
+          JSON.stringify({ epoch }),
+          BigInt(0),
+          BigInt(this.oracleGas)
+        )
+      );
+
+    return promise;
   }
 
   _setBetInfo(epoch: number, owner: string, betInfo: BetInfo): void {
