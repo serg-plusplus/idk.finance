@@ -1,18 +1,10 @@
-// import {
-//   NearBindgen,
-//   call,
-//   view,
-//   initialize,
-//   near,
-//   LookupMap,
-// } from "near-sdk-js";
-enum Position {
+export enum Position {
   None,
   Bearish,
   Bullish,
 }
 
-class BetInfo {
+export class BetInfo {
   position: Position;
   amount: bigint;
   claimed: boolean;
