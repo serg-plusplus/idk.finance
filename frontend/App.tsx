@@ -1,16 +1,20 @@
 import "regenerator-runtime/runtime";
 
 import React from "react";
-import { Button, Card, Grid, Text, Link } from "@nextui-org/react";
+import { Card, Grid, Text, Link } from "@nextui-org/react";
 
 import "./assets/global.css";
 
 import { EducationalText, SignInPrompt, SignOutButton } from "./ui-components";
+import Chart from "./chart/Chart";
+import { ChartData, getChartData } from "./chart/chart-data";
 
-const App: React.FC = ({ isSignedIn, contract, wallet }) => {
+const App: React.FC = ({ isSignedIn, contract, wallet }: any) => {
   const [valueFromBlockchain, setValueFromBlockchain] = React.useState();
-
   const [uiPleaseWait, setUiPleaseWait] = React.useState(true);
+  const [coingeckoData, setCoingeckoData] = React.useState<ChartData>({
+    prices: [],
+  });
 
   // Get blockchian state once on component load
   React.useEffect(() => {
@@ -21,6 +25,8 @@ const App: React.FC = ({ isSignedIn, contract, wallet }) => {
       .finally(() => {
         setUiPleaseWait(false);
       });
+
+    getChartData().then(setCoingeckoData);
   }, []);
 
   /// If user not signed-in with wallet - show prompt
@@ -96,24 +102,15 @@ const App: React.FC = ({ isSignedIn, contract, wallet }) => {
         onClick={() => wallet.signOut()}
       />
       <main className={uiPleaseWait ? "please-wait" : ""}>
-        <h1>
-          The contract says:{" "}
-          <span className="greeting">{valueFromBlockchain}</span>
-        </h1>
-        <form onSubmit={changeGreeting} className="change">
-          <label>Change greeting:</label>
-          <div>
-            <input
-              autoComplete="off"
-              defaultValue={valueFromBlockchain}
-              id="greetingInput"
-            />
-            <Button>
-              <span>Save</span>
-              <div className="loader"></div>
-            </Button>
-          </div>
-        </form>
+        {coingeckoData.prices.length && (
+          <Chart
+            margin={{ top: 10, bottom: 0, left: 0, right: 0 }}
+            stock={coingeckoData}
+            width={400}
+            height={300}
+          />
+        )}
+
         <EducationalText />
       </main>
     </>
