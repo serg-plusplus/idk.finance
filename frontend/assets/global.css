@@ -3,21 +3,24 @@
 }
 
 html {
-  --bg: #efefef;
-  --fg: #1e1e1e;
-  --gray: #555;
-  --light-gray: #ccc;
-  --shadow: #e6e6e6;
-  --success: rgb(90, 206, 132);
-  --primary: #FF585D;
-  --secondary: #0072CE;
+  /*--bg: #efefef;*/
+  /*--fg: #1e1e1e;*/
+  /*!*--nextui-colors-background: #efefef !important;*!*/
+  /*!*--nextui-colors-text: #1e1e1e !important;*!*/
+  /*--gray: #555;*/
+  /*--light-gray: #ccc;*/
+  /*--shadow: #e6e6e6;*/
+  /*--success: rgb(90, 206, 132);*/
+  /*--primary: #FF585D;*/
+  /*--secondary: #0072CE;*/
   --nextui-fonts-sans: "General Sans",-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif !important;
   --nextui-letterSpacings-tighter: -0.025em !important;
   --nextui-letterSpacings-tight: 0 !important;
   --nextui-letterSpacings-normal: 0 !important;
+  --nextui-colors-headerBackground: hsla(0,0%,100%,0.8);
 
-  background-color: var(--bg);
-  color: var(--fg);
+  /*background-color: var(--bg);*/
+  /*color: var(--fg);*/
   font-size: calc(0.9em + 0.5vw);
   line-height: 1.3;
 }
@@ -25,6 +28,7 @@ html {
 body {
   margin: 0;
   padding: 1em;
+  min-height: 100vh;
 }
 
 /*main {*/
@@ -169,21 +173,22 @@ li {
   padding-bottom: 1em;
 }
 
-@media (prefers-color-scheme: dark) {
-  html {
-    --bg: #1e1e1e;
-    --fg: #efefef;
-    --gray: #aaa;
-    --shadow: #2a2a2a;
-    --light-gray: #444;
-  }
-  h1 {
-    background-image: url(./logo-white.svg);
-  }
-  input:focus {
-    box-shadow: 0 0 10em rgba(255, 255, 255, 0.02) inset;
-  }
-}
+/*@media (prefers-color-scheme: dark) {*/
+/*.dark-theme {*/
+  /*--bg: #1e1e1e;*/
+  /*--fg: #efefef;*/
+  /*--gray: #aaa;*/
+  /*--shadow: #2a2a2a;*/
+  /*--light-gray: #444;*/
+  /*--nextui-colors-headerBackground: rgba(0,0,0,0.5);*/
+/*}*/
+/*h1 {*/
+/*  background-image: url(./logo-white.svg);*/
+/*}*/
+/*input:focus {*/
+/*  box-shadow: 0 0 10em rgba(255, 255, 255, 0.02) inset;*/
+/*}*/
+/*}*/
 
 main.please-wait .loader,
 main.please-wait .loader:after{
@@ -247,4 +252,34 @@ main.please-wait .loader:after{
 #near-wallet-selector-modal {
   position: relative;
   z-index: 10000;
+}
+
+.header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: 9000;
+  background-color: var(--nextui-colors-headerBackground);
+  backdrop-filter: saturate(180%) blur(10px);
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+  font-weight: 600;
+}
+
+.header .button {
+  font-weight: 600;
+}
+
+.header--logo {
+  margin-right: 5rem;
+}
+
+.header--nav {
+  display: flex;
+  align-items: center;
+}
+
+.header--mode-switcher {
+  margin-left: auto;
 }
