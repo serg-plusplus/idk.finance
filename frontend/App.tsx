@@ -8,8 +8,11 @@ import "./assets/global.css";
 import { EducationalText, SignInPrompt, SignOutButton } from "./ui-components";
 import Chart from "./chart/Chart";
 import { ChartData, getChartData } from "./chart/chart-data";
+import { useIdkState } from "./idk-state";
 
-const App: React.FC = ({ isSignedIn, contract, wallet }: any) => {
+const App: React.FC = () => {
+  const { isSignedIn, contract, wallet } = useIdkState();
+
   const [valueFromBlockchain, setValueFromBlockchain] = React.useState();
   const [uiPleaseWait, setUiPleaseWait] = React.useState(true);
   const [coingeckoData, setCoingeckoData] = React.useState<ChartData>({
@@ -65,7 +68,7 @@ const App: React.FC = ({ isSignedIn, contract, wallet }: any) => {
           </Card.Body>
           <Card.Footer>
             <Link
-              icon
+              icon={true}
               color="primary"
               target="_blank"
               href="https://github.com/nextui-org/nextui"
