@@ -10,6 +10,12 @@ export type IdkStateProviderProps = {
   contract: Contract;
 };
 
+export enum Position {
+  None,
+  Bearish,
+  Bullish,
+}
+
 export const [IdkStateProvider, useIdkState] = constate(
   ({ isSignedIn, contract, wallet }: IdkStateProviderProps) => {
     const getState = useCallback(async () => {
@@ -23,6 +29,28 @@ export const [IdkStateProvider, useIdkState] = constate(
       [wallet]
     );
 
+    const bet = useCallback(
+      async ({ epoch, position }: { epoch: number; position: Position }) => {
+        return await wallet.callMethod({
+          method: "bet",
+          args: { epoch, position },
+        });
+      },
+      [wallet]
+    );
+
+    const claim = useCallback(
+      async ({ epochs }: { epochs: number[] }) => {
+        return await wallet.callMethod({
+          method: "bet",
+          args: { epochs },
+        });
+      },
+      [wallet]
+    );
+
+    const genesisStartRound = useCallback(async () => {}, [wallet]);
+
     return {
       isSignedIn,
       contract,
@@ -30,6 +58,8 @@ export const [IdkStateProvider, useIdkState] = constate(
 
       getState,
       getRound,
+
+      bet,
     };
   }
 );
