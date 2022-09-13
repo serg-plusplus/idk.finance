@@ -550,6 +550,9 @@ function call({
     };
   };
 }
+function view({}) {
+  return function (target, key, descriptor) {};
+}
 function NearBindgen({
   requireInit = false
 }) {
@@ -975,10 +978,10 @@ class Round {
 
 }
 
-var _dec, _dec2, _dec3, _dec4, _dec5, _dec6, _dec7, _dec8, _dec9, _dec10, _class, _class2;
-let PredictionMarket = (_dec = NearBindgen({}), _dec2 = initialize({}), _dec3 = call({
+var _dec, _dec2, _dec3, _dec4, _dec5, _dec6, _dec7, _dec8, _dec9, _dec10, _dec11, _dec12, _dec13, _dec14, _dec15, _dec16, _class, _class2;
+let PredictionMarket = (_dec = NearBindgen({}), _dec2 = initialize({}), _dec3 = view({}), _dec4 = view({}), _dec5 = call({
   payableFunction: true
-}), _dec4 = call({}), _dec5 = call({}), _dec6 = call({}), _dec7 = call({}), _dec8 = call({}), _dec9 = call({}), _dec10 = call({}), _dec(_class = (_class2 = class PredictionMarket {
+}), _dec6 = call({}), _dec7 = call({}), _dec8 = call({}), _dec9 = call({}), _dec10 = call({}), _dec11 = call({}), _dec12 = call({}), _dec13 = call({}), _dec14 = call({}), _dec15 = call({}), _dec16 = view({}), _dec(_class = (_class2 = class PredictionMarket {
   owner = "admin.idk.near";
   pendingOwner = "";
   manager = "manager.idk.near";
@@ -1000,6 +1003,31 @@ let PredictionMarket = (_dec = NearBindgen({}), _dec2 = initialize({}), _dec3 = 
   }) {
     this.owner = owner;
     this.manager = manager;
+  } // VIEW
+
+
+  getState() {
+    return {
+      genesisLockOnce: this.genesisLockOnce,
+      genesisStartOnce: this.genesisStartOnce,
+      owner: this.owner,
+      pendingOwner: this.pendingOwner,
+      manager: this.manager,
+      oracle: this.oracle,
+      assetId: this.assetId,
+      minBid: this.minBid.toString(),
+      duration: this.duration.toString(),
+      feeRate: this.feeRate.toString(),
+      feePrecision: this.feePrecision.toString(),
+      feeTreasury: this.feeTreasury.toString(),
+      currentEpoch: this.currentEpoch
+    };
+  }
+
+  getRound({
+    epoch
+  }) {
+    return this.rounds.get(epoch.toString());
   } // PUBLIC
 
 
@@ -1038,8 +1066,37 @@ let PredictionMarket = (_dec = NearBindgen({}), _dec2 = initialize({}), _dec3 = 
     this._setUserRounds(sender, userRounds);
 
     log(`${sender} bids in the ${epoch} epoch. Amount is ${amount}`);
-  } // ORACLE
+  }
 
+  claim({
+    epochs
+  }) {
+    let reward = BigInt(0);
+    const sender = predecessorAccountId();
+
+    for (let epoch of epochs) {
+      let round = this._getRound(epoch);
+
+      assert(round.startTimestamp != BigInt(0), "Round isn't started");
+      assert(round.closeTimestamp < blockTimestamp(), "Round isn't ended");
+      assert(round.oracleCalled, "Oracle isn't called");
+      assert(this.claimable(epoch, sender), "Not eligible");
+
+      let betInfo = this._getBetInfo(epoch, sender);
+
+      const epochReward = betInfo.amount * round.rewardAmount / round.rewardBaseCalAmount;
+      reward += epochReward;
+      betInfo.claimed = true;
+
+      this._setBetInfo(epoch, sender, betInfo);
+
+      log(`${sender} claimed ${epochReward} for ${epoch} round.`);
+    }
+
+    if (reward > 0) {
+      this._safeTransfer(sender, reward);
+    }
+  }
 
   reveal({}) {
     assert(this.genesisLockOnce && this.genesisStartOnce, "Genesis rounds aren't finished");
@@ -1055,6 +1112,30 @@ let PredictionMarket = (_dec = NearBindgen({}), _dec2 = initialize({}), _dec3 = 
     this.currentEpoch += 1;
 
     this._safeStartRound(this.currentEpoch);
+  }
+
+  genesisStartRound({}) {
+    assert(!this.genesisStartOnce, "Genesis round is started");
+    this.currentEpoch += 1;
+
+    this._startRound(this.currentEpoch);
+
+    this.genesisStartOnce = true;
+  }
+
+  genesisLockRound({}) {
+    assert(this.genesisStartOnce, "Genesis round is not started");
+    assert(!this.genesisLockOnce, "Genesis round is locked");
+
+    let price = this._getPrice();
+
+    this._safeLockRound(this.currentEpoch, price);
+
+    this.currentEpoch += 1;
+
+    this._startRound(this.currentEpoch);
+
+    this.genesisLockOnce = true;
   } // ADMIN
 
 
@@ -1087,8 +1168,8 @@ let PredictionMarket = (_dec = NearBindgen({}), _dec2 = initialize({}), _dec3 = 
   }) {
     this._assertOwner();
 
-    const promise = promiseBatchCreate(receiver);
-    promiseBatchActionTransfer(promise, this.feeTreasury);
+    this._safeTransfer(receiver, this.feeTreasury);
+
     this.feeTreasury = BigInt(0);
   }
 
@@ -1135,7 +1216,7 @@ let PredictionMarket = (_dec = NearBindgen({}), _dec2 = initialize({}), _dec3 = 
     log(`Rewards for ${epoch} round calculated`);
   }
 
-  _safeEndRound(epoch, price) {
+  _safeLockRound(epoch, price) {
     let round = this._getRound(epoch);
 
     assert(round.startTimestamp != BigInt(0), "Round n-1 is not started");
@@ -1148,12 +1229,13 @@ let PredictionMarket = (_dec = NearBindgen({}), _dec2 = initialize({}), _dec3 = 
     log(`The round ${epoch} locked`);
   }
 
-  _safeLockRound(epoch, price) {
+  _safeEndRound(epoch, price) {
     let round = this._getRound(epoch);
 
     assert(round.lockTimestamp != BigInt(0), "Round n-1 is not started");
     assert(round.closeTimestamp < blockTimestamp(), "End is too early");
     round.closePrice = price;
+    round.oracleCalled = true;
 
     this._setRound(epoch, round);
 
@@ -1230,7 +1312,42 @@ let PredictionMarket = (_dec = NearBindgen({}), _dec2 = initialize({}), _dec3 = 
     this.userRounds.set(owner, userRounds);
   }
 
-}, (_applyDecoratedDescriptor(_class2.prototype, "init", [_dec2], Object.getOwnPropertyDescriptor(_class2.prototype, "init"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "bet", [_dec3], Object.getOwnPropertyDescriptor(_class2.prototype, "bet"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "reveal", [_dec4], Object.getOwnPropertyDescriptor(_class2.prototype, "reveal"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "setMinBid", [_dec5], Object.getOwnPropertyDescriptor(_class2.prototype, "setMinBid"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "setDuration", [_dec6], Object.getOwnPropertyDescriptor(_class2.prototype, "setDuration"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "setFeeRate", [_dec7], Object.getOwnPropertyDescriptor(_class2.prototype, "setFeeRate"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "claimFee", [_dec8], Object.getOwnPropertyDescriptor(_class2.prototype, "claimFee"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "transferOwnership", [_dec9], Object.getOwnPropertyDescriptor(_class2.prototype, "transferOwnership"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "confirmTransferOwnership", [_dec10], Object.getOwnPropertyDescriptor(_class2.prototype, "confirmTransferOwnership"), _class2.prototype)), _class2)) || _class);
+  _safeTransfer(receiver, amount) {
+    const promise = promiseBatchCreate(receiver);
+    promiseBatchActionTransfer(promise, amount);
+  }
+
+  claimable(epoch, owner) {
+    let round = this._getRound(epoch);
+
+    let betInfo = this._getBetInfo(epoch, owner);
+
+    if (round.lockPrice == round.closePrice) {
+      return false;
+    }
+
+    return round.oracleCalled && betInfo.amount != BigInt(0) && !betInfo.claimed && (round.closePrice > round.lockPrice && betInfo.position == Position.Bullish || round.closePrice < round.lockPrice && betInfo.position == Position.Bearish);
+  }
+
+}, (_applyDecoratedDescriptor(_class2.prototype, "init", [_dec2], Object.getOwnPropertyDescriptor(_class2.prototype, "init"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "getState", [_dec3], Object.getOwnPropertyDescriptor(_class2.prototype, "getState"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "getRound", [_dec4], Object.getOwnPropertyDescriptor(_class2.prototype, "getRound"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "bet", [_dec5], Object.getOwnPropertyDescriptor(_class2.prototype, "bet"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "claim", [_dec6], Object.getOwnPropertyDescriptor(_class2.prototype, "claim"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "reveal", [_dec7], Object.getOwnPropertyDescriptor(_class2.prototype, "reveal"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "genesisStartRound", [_dec8], Object.getOwnPropertyDescriptor(_class2.prototype, "genesisStartRound"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "genesisLockRound", [_dec9], Object.getOwnPropertyDescriptor(_class2.prototype, "genesisLockRound"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "setMinBid", [_dec10], Object.getOwnPropertyDescriptor(_class2.prototype, "setMinBid"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "setDuration", [_dec11], Object.getOwnPropertyDescriptor(_class2.prototype, "setDuration"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "setFeeRate", [_dec12], Object.getOwnPropertyDescriptor(_class2.prototype, "setFeeRate"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "claimFee", [_dec13], Object.getOwnPropertyDescriptor(_class2.prototype, "claimFee"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "transferOwnership", [_dec14], Object.getOwnPropertyDescriptor(_class2.prototype, "transferOwnership"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "confirmTransferOwnership", [_dec15], Object.getOwnPropertyDescriptor(_class2.prototype, "confirmTransferOwnership"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "claimable", [_dec16], Object.getOwnPropertyDescriptor(_class2.prototype, "claimable"), _class2.prototype)), _class2)) || _class);
+function claimable() {
+  let _state = PredictionMarket._getState();
+
+  if (!_state && PredictionMarket._requireInit()) {
+    throw new Error("Contract must be initialized");
+  }
+
+  let _contract = PredictionMarket._create();
+
+  if (_state) {
+    PredictionMarket._reconstruct(_contract, _state);
+  }
+
+  let _args = PredictionMarket._getArgs();
+
+  let _result = _contract.claimable(_args);
+  if (_result !== undefined) if (_result && _result.constructor && _result.constructor.name === "NearPromise") _result.onReturn();else env.value_return(PredictionMarket._serialize(_result));
+}
 function confirmTransferOwnership() {
   let _state = PredictionMarket._getState();
 
@@ -1357,6 +1474,48 @@ function setMinBid() {
 
   if (_result !== undefined) if (_result && _result.constructor && _result.constructor.name === "NearPromise") _result.onReturn();else env.value_return(PredictionMarket._serialize(_result));
 }
+function genesisLockRound() {
+  let _state = PredictionMarket._getState();
+
+  if (!_state && PredictionMarket._requireInit()) {
+    throw new Error("Contract must be initialized");
+  }
+
+  let _contract = PredictionMarket._create();
+
+  if (_state) {
+    PredictionMarket._reconstruct(_contract, _state);
+  }
+
+  let _args = PredictionMarket._getArgs();
+
+  let _result = _contract.genesisLockRound(_args);
+
+  PredictionMarket._saveToStorage(_contract);
+
+  if (_result !== undefined) if (_result && _result.constructor && _result.constructor.name === "NearPromise") _result.onReturn();else env.value_return(PredictionMarket._serialize(_result));
+}
+function genesisStartRound() {
+  let _state = PredictionMarket._getState();
+
+  if (!_state && PredictionMarket._requireInit()) {
+    throw new Error("Contract must be initialized");
+  }
+
+  let _contract = PredictionMarket._create();
+
+  if (_state) {
+    PredictionMarket._reconstruct(_contract, _state);
+  }
+
+  let _args = PredictionMarket._getArgs();
+
+  let _result = _contract.genesisStartRound(_args);
+
+  PredictionMarket._saveToStorage(_contract);
+
+  if (_result !== undefined) if (_result && _result.constructor && _result.constructor.name === "NearPromise") _result.onReturn();else env.value_return(PredictionMarket._serialize(_result));
+}
 function reveal() {
   let _state = PredictionMarket._getState();
 
@@ -1373,6 +1532,27 @@ function reveal() {
   let _args = PredictionMarket._getArgs();
 
   let _result = _contract.reveal(_args);
+
+  PredictionMarket._saveToStorage(_contract);
+
+  if (_result !== undefined) if (_result && _result.constructor && _result.constructor.name === "NearPromise") _result.onReturn();else env.value_return(PredictionMarket._serialize(_result));
+}
+function claim() {
+  let _state = PredictionMarket._getState();
+
+  if (!_state && PredictionMarket._requireInit()) {
+    throw new Error("Contract must be initialized");
+  }
+
+  let _contract = PredictionMarket._create();
+
+  if (_state) {
+    PredictionMarket._reconstruct(_contract, _state);
+  }
+
+  let _args = PredictionMarket._getArgs();
+
+  let _result = _contract.claim(_args);
 
   PredictionMarket._saveToStorage(_contract);
 
@@ -1399,6 +1579,42 @@ function bet() {
 
   if (_result !== undefined) if (_result && _result.constructor && _result.constructor.name === "NearPromise") _result.onReturn();else env.value_return(PredictionMarket._serialize(_result));
 }
+function getRound() {
+  let _state = PredictionMarket._getState();
+
+  if (!_state && PredictionMarket._requireInit()) {
+    throw new Error("Contract must be initialized");
+  }
+
+  let _contract = PredictionMarket._create();
+
+  if (_state) {
+    PredictionMarket._reconstruct(_contract, _state);
+  }
+
+  let _args = PredictionMarket._getArgs();
+
+  let _result = _contract.getRound(_args);
+  if (_result !== undefined) if (_result && _result.constructor && _result.constructor.name === "NearPromise") _result.onReturn();else env.value_return(PredictionMarket._serialize(_result));
+}
+function getState() {
+  let _state = PredictionMarket._getState();
+
+  if (!_state && PredictionMarket._requireInit()) {
+    throw new Error("Contract must be initialized");
+  }
+
+  let _contract = PredictionMarket._create();
+
+  if (_state) {
+    PredictionMarket._reconstruct(_contract, _state);
+  }
+
+  let _args = PredictionMarket._getArgs();
+
+  let _result = _contract.getState(_args);
+  if (_result !== undefined) if (_result && _result.constructor && _result.constructor.name === "NearPromise") _result.onReturn();else env.value_return(PredictionMarket._serialize(_result));
+}
 function init() {
   let _state = PredictionMarket._getState();
 
@@ -1415,5 +1631,5 @@ function init() {
   if (_result !== undefined) if (_result && _result.constructor && _result.constructor.name === "NearPromise") _result.onReturn();else env.value_return(PredictionMarket._serialize(_result));
 }
 
-export { bet, claimFee, confirmTransferOwnership, init, reveal, setDuration, setFeeRate, setMinBid, transferOwnership };
+export { bet, claim, claimFee, claimable, confirmTransferOwnership, genesisLockRound, genesisStartRound, getRound, getState, init, reveal, setDuration, setFeeRate, setMinBid, transferOwnership };
 //# sourceMappingURL=prediction_market.js.map
