@@ -42,6 +42,32 @@ class PredictionMarket {
     this.manager = manager;
   }
 
+  // VIEW
+
+  @view({})
+  getState() {
+    return {
+      genesisLockOnce: this.genesisLockOnce,
+      genesisStartOnce: this.genesisStartOnce,
+      owner: this.owner,
+      pendingOwner: this.pendingOwner,
+      manager: this.manager,
+      oracle: this.oracle,
+      assetId: this.assetId,
+      minBid: this.minBid,
+      duration: this.duration,
+      feeRate: this.feeRate,
+      feePrecision: this.feePrecision,
+      feeTreasury: this.feeTreasury,
+      currentEpoch: this.currentEpoch,
+    };
+  }
+
+  @view({})
+  getRound({ epoch }: { epoch: number }) {
+    return this.rounds.get(epoch.toString());
+  }
+
   // PUBLIC
 
   @call({ payableFunction: true })
