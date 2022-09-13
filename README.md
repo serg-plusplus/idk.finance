@@ -1,26 +1,27 @@
-near-blank-project
+# 🍬 idk.finance - I DONT KNOW Finance
 ==================
+
+### [https://idk.finance](https://idk.finance)
 
 This app was initialized with [create-near-app]
 
-
 Quick Start
-===========
 
-If you haven't installed dependencies during setup:
+```
+npm install
+```
 
-    npm install
+Build and deploy contract to TestNet with a temporary dev account:
 
+```
+npm run deploy
+```
 
-Build and deploy your contract to TestNet with a temporary dev account:
+Start app. This will run a dev server with frontend:
 
-    npm run deploy
-
-Test your contract:
-
-    npm test
-
-If you have a frontend, run `npm start`. This will run a dev server.
+```
+npm start
+```
 
 
 Exploring The Code
@@ -37,7 +38,7 @@ Exploring The Code
 Deploy
 ======
 
-Every smart contract in NEAR has its [own associated account][NEAR accounts]. 
+Every smart contract in NEAR has its [own associated account][NEAR accounts].
 When you run `npm run deploy`, your smart contract gets deployed to the live NEAR TestNet with a temporary dev account.
 When you're ready to make it permanent, here's how:
 
