@@ -1,27 +1,26 @@
 import "regenerator-runtime/runtime";
-
-import React from "react";
-// import { Card, Grid, Text, Link } from "@nextui-org/react";
+import {FC, useEffect, useState} from "react";
+import {Container} from "@nextui-org/react";
 
 import "./assets/global.css";
 
-import { EducationalText, SignInPrompt, SignOutButton } from "./ui-components";
-import Chart from "./chart/Chart";
+import { SignInPrompt } from "./ui-components";
+import Chart from "./chart/Chart2";
 import { ChartData, getChartData } from "./chart/chart-data";
 import { useIdkState } from "./idk-state";
 import Header from "./Header/Header";
 
-const App: React.FC = () => {
+const App: FC = () => {
   const { isSignedIn, contract, wallet, getState } = useIdkState();
 
-  const [valueFromBlockchain, setValueFromBlockchain] = React.useState();
-  const [uiPleaseWait, setUiPleaseWait] = React.useState(true);
-  const [coingeckoData, setCoingeckoData] = React.useState<ChartData>({
+  const [valueFromBlockchain, setValueFromBlockchain] = useState();
+  const [uiPleaseWait, setUiPleaseWait] = useState(false);
+  const [coingeckoData, setCoingeckoData] = useState<ChartData>({
     prices: [],
   });
 
   // Get blockchian state once on component load
-  React.useEffect(() => {
+  useEffect(() => {
     getState().then(console.info).catch(console.error);
     // getState
     //   .then(setValueFromBlockchain)
@@ -64,21 +63,16 @@ const App: React.FC = () => {
   return (
     <>
       <Header/>
-      <SignOutButton
-        accountId={wallet.accountId}
-        onClick={() => wallet.signOut()}
-      />
-      <main className={uiPleaseWait ? "please-wait" : ""}>
-        {coingeckoData.prices.length && (
-          <Chart
-            margin={{ top: 10, bottom: 0, left: 0, right: 0 }}
-            stock={coingeckoData}
-            width={400}
-            height={300}
-          />
-        )}
-
-        <EducationalText />
+      <main className={uiPleaseWait ? "please-wait" : "main-trade"}>
+        <Container display="flex" justify="center">
+          {coingeckoData.prices.length && (
+            <Chart
+              stock={coingeckoData}
+              width={1200}
+              height={400}
+            />
+          )}
+        </Container>
       </main>
     </>
   );

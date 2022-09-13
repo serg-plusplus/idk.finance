@@ -4,6 +4,7 @@ import appleStock, { AppleStock } from "@visx/mock-data/lib/mocks/appleStock";
 import { curveMonotoneX } from "@visx/curve";
 import { GridRows, GridColumns } from "@visx/grid";
 import { scaleTime, scaleLinear } from "@visx/scale";
+import {AxisLeft, AxisBottom, Axis} from '@visx/axis';
 import {
   withTooltip,
   Tooltip,
@@ -17,6 +18,7 @@ import { max, extent, bisector } from "d3-array";
 import { timeFormat } from "d3-time-format";
 
 import { ChartData, ChartPoint } from "./chart-data";
+import {Card} from "@nextui-org/react";
 
 type TooltipData = ChartPoint;
 
@@ -60,10 +62,12 @@ export default withTooltip<AreaProps, TooltipData>(
     stock = { prices: [] },
   }: AreaProps & WithTooltipProvidedProps<TooltipData>) => {
     if (width < 10) return null;
+    console.log('prices', stock.prices)
 
     // bounds
     const innerWidth = width - margin.left - margin.right;
     const innerHeight = height - margin.top - margin.bottom;
+    const yMax = height - margin.top - margin.bottom;
 
     // scales
     const dateScale = useMemo(
@@ -74,6 +78,12 @@ export default withTooltip<AreaProps, TooltipData>(
         }),
       [innerWidth, margin.left]
     );
+
+    // const timeScale = useMemo(() => scaleTime({
+    //   domain: [Math.min(...stock.prices.map((date) => date[0])), Math.max(...stock.prices.map((date) => date[0]))],
+    // }),[]);
+    // console.log('timeScale', timeScale)
+
     const stockValueScale = useMemo(
       () =>
         scaleLinear({
@@ -114,8 +124,9 @@ export default withTooltip<AreaProps, TooltipData>(
     );
 
     return (
+      // <Card css={{width, marginLeft: "auto", marginRight: "auto"}}>
       <div>
-        <svg width={width} height={height}>
+        <svg width={width} height={height + 20}>
           <rect
             x={0}
             y={0}
@@ -207,6 +218,7 @@ export default withTooltip<AreaProps, TooltipData>(
               />
             </g>
           )}
+          <Axis top={yMax} scale={dateScale} numTicks={width > 520 ? 10 : 5} />
         </svg>
         {tooltipData && (
           <div>
@@ -233,6 +245,7 @@ export default withTooltip<AreaProps, TooltipData>(
           </div>
         )}
       </div>
+      // </Card>
     );
   }
 );
