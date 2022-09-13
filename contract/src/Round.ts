@@ -1,13 +1,4 @@
-// import {
-//   NearBindgen,
-//   call,
-//   view,
-//   initialize,
-//   near,
-//   LookupMap,
-// } from "near-sdk-js";
-
-class Round {
+export class Round {
   epoch: bigint;
   startTimestamp: bigint;
   lockTimestamp: bigint;
@@ -34,5 +25,18 @@ class Round {
     rewardBaseCalAmount,
     rewardAmount,
     oracleCalled
-  ) {}
+  ) {
+    this.epoch = epoch;
+    this.startTimestamp = startTimestamp;
+    this.lockTimestamp = lockTimestamp;
+    this.closeTimestamp = closeTimestamp;
+    this.lockPrice = lockPrice;
+    this.closePrice = closePrice;
+    this.totalAmount = totalAmount;
+    this.bullAmount = bullAmount;
+    this.bearAmount = bearAmount;
+    this.rewardBaseCalAmount = rewardBaseCalAmount;
+    this.rewardAmount = rewardAmount;
+    this.oracleCalled = oracleCalled;
+  }
 }
