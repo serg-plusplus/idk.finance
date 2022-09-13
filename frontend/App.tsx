@@ -11,7 +11,7 @@ import { useIdkState } from "./idk-state";
 import Header from "./Header/Header";
 
 const App: FC = () => {
-  const { isSignedIn, contract, wallet, getState } = useIdkState();
+  const { isSignedIn, wallet, getState } = useIdkState();
 
   const [valueFromBlockchain, setValueFromBlockchain] = useState();
   const [uiPleaseWait, setUiPleaseWait] = useState(false);
@@ -49,15 +49,15 @@ const App: FC = () => {
     e.preventDefault();
     setUiPleaseWait(true);
     const { greetingInput } = e.target.elements;
-    contract
-      .setGreeting(greetingInput.value)
-      .then(async () => {
-        return contract.getGreeting();
-      })
-      .then(setValueFromBlockchain)
-      .finally(() => {
-        setUiPleaseWait(false);
-      });
+    // contract
+    //   .setGreeting(greetingInput.value)
+    //   .then(async () => {
+    //     return contract.getGreeting();
+    //   })
+    //   .then(setValueFromBlockchain)
+    //   .finally(() => {
+    //     setUiPleaseWait(false);
+    //   });
   }
 
   return (
