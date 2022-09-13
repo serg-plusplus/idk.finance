@@ -5,6 +5,7 @@ import { NextUIProvider } from "@nextui-org/react";
 import App from "./App";
 import { Wallet } from "./near-wallet";
 import { Contract } from "./near-interface";
+import { IdkStateProvider } from "./idk-state";
 
 const reactRoot = createRoot(document.querySelector("#root"));
 
@@ -18,7 +19,13 @@ window.onload = wallet
   .then((isSignedIn) => {
     reactRoot.render(
       <NextUIProvider>
-        <App isSignedIn={isSignedIn} contract={contract} wallet={wallet} />
+        <IdkStateProvider
+          isSignedIn={isSignedIn}
+          contract={contract}
+          wallet={wallet}
+        >
+          <App />
+        </IdkStateProvider>
       </NextUIProvider>
     );
   })
