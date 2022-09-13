@@ -5,7 +5,6 @@ import { NextUIProvider, createTheme } from "@nextui-org/react";
 import { ThemeProvider as NextThemesProvider } from "next-themes";
 import App from "./App";
 import { Wallet } from "./near-wallet";
-import { Contract } from "./near-interface";
 import { IdkStateProvider } from "./idk-state";
 
 const lightTheme = createTheme({
@@ -41,17 +40,12 @@ const renderApp = (children) =>
 // create the Wallet and the Contract
 const contractId = process.env.CONTRACT_NAME;
 const wallet = new Wallet({ contractId: contractId });
-const contract = new Contract({ wallet: wallet });
 
 window.onload = wallet
   .startUp()
   .then((isSignedIn) => {
     renderApp(
-      <IdkStateProvider
-        isSignedIn={isSignedIn}
-        contract={contract}
-        wallet={wallet}
-      >
+      <IdkStateProvider isSignedIn={isSignedIn} wallet={wallet}>
         <App />
       </IdkStateProvider>
     );

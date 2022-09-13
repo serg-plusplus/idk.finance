@@ -36,6 +36,10 @@ body {
 /*  max-width: 26em;*/
 /*}*/
 
+main.main-trade {
+  padding-top: 6rem;
+}
+
 main.please-wait {
 }
 
@@ -174,14 +178,14 @@ li {
 }
 
 /*@media (prefers-color-scheme: dark) {*/
-/*.dark-theme {*/
+.dark-theme {
   /*--bg: #1e1e1e;*/
   /*--fg: #efefef;*/
   /*--gray: #aaa;*/
   /*--shadow: #2a2a2a;*/
   /*--light-gray: #444;*/
-  /*--nextui-colors-headerBackground: rgba(0,0,0,0.5);*/
-/*}*/
+  --nextui-colors-headerBackground: rgba(0,0,0,0.5);
+}
 /*h1 {*/
 /*  background-image: url(./logo-white.svg);*/
 /*}*/

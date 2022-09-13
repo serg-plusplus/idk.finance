@@ -103,7 +103,7 @@ class PredictionMarket {
 
     let betInfo = this._getBetInfo(epoch, sender);
     betInfo.position = position;
-    betInfo.amount = amount;
+    betInfo.amount = amount.toString();
     userRounds.set(epoch);
 
     this._setBetInfo(epoch, sender, betInfo);
@@ -134,7 +134,7 @@ class PredictionMarket {
 
       let betInfo = this._getBetInfo(epoch, sender);
       const epochReward =
-        (betInfo.amount * BigInt(round.rewardAmount)) /
+        (BigInt(betInfo.amount) * BigInt(round.rewardAmount)) /
         BigInt(round.rewardBaseCalAmount);
       reward += epochReward;
       betInfo.claimed = true;
@@ -408,7 +408,7 @@ class PredictionMarket {
   _getBetInfo(epoch: number, owner: string): BetInfo {
     let betInfo: any = this.rounds.get(epoch.toString() + owner);
     if (betInfo === null) {
-      return new BetInfo(Position.None, BigInt(0), false);
+      return new BetInfo(Position.None, "0", false);
     }
     return new BetInfo(betInfo.position, betInfo.amount, betInfo.claimed);
   }
@@ -496,7 +496,7 @@ class PredictionMarket {
     }
     return (
       round.oracleCalled &&
-      betInfo.amount != BigInt(0) &&
+      BigInt(betInfo.amount) != BigInt(0) &&
       !betInfo.claimed &&
       ((BigInt(round.closePrice) > BigInt(round.lockPrice) &&
         betInfo.position == Position.Bullish) ||
