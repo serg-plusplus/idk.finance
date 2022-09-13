@@ -1,4 +1,7 @@
-import {useRef, useState, useMemo} from 'react';
+import {useRef, useState, useMemo, FC} from 'react';
+import {min, max, extent} from 'd3-array';
+import { timeFormat } from "d3-time-format";
+import {Card} from "@nextui-org/react";
 import {scaleTime, scaleLinear} from '@visx/scale';
 import {Brush} from '@visx/brush';
 import {Bounds} from '@visx/brush/lib/types';
@@ -6,9 +9,11 @@ import BaseBrush, {BaseBrushState, UpdateBrush} from '@visx/brush/lib/BaseBrush'
 import {PatternLines} from '@visx/pattern';
 import {Group} from '@visx/group';
 import {LinearGradient} from '@visx/gradient';
-import {min, max, extent} from 'd3-array';
+import {defaultStyles, Tooltip, TooltipWithBounds, withTooltip} from "@visx/tooltip";
+import {WithTooltipProvidedProps} from "@visx/tooltip/lib/enhancers/withTooltip";
 import AreaChart from './AreaChart';
 import AreaChart2 from './AreaChart2';
+import {ChartPoint} from "./chart-data";
 
 // Initialize some variables
 const brushMargin = {top: 10, bottom: 15, left: 50, right: 20};
@@ -22,10 +27,17 @@ const selectedBrushStyle = {
   fill: `url(#${PATTERN_ID})`,
   stroke: 'white',
 };
+const tooltipStyles = {
+  ...defaultStyles,
+  background,
+  border: "1px solid white",
+  color: "white",
+};
 
 // accessors
 const getDate = (d) => new Date(d[0]);
 const getStockValue = (d) => d[1];
+const formatDate = timeFormat("%b %d, '%y");
 
 export type BrushProps = {
   width: number;
@@ -34,17 +46,24 @@ export type BrushProps = {
   stock?: any;
 };
 
-function BrushChart({
-                      width,
-                      height,
-                      margin = {
-                        top: 20,
-                        left: 50,
-                        bottom: 20,
-                        right: 20,
-                      },
-                      stock = {prices: []},
-                    }: BrushProps) {
+type TooltipData = ChartPoint;
+
+const BrushChart: FC = withTooltip<BrushProps, TooltipData>(({
+  width,
+  height,
+  margin = {
+    top: 20,
+    left: 50,
+    bottom: 20,
+    right: 20,
+  },
+  stock = {prices: []},
+  showTooltip,
+  hideTooltip,
+  tooltipData,
+  tooltipTop = 0,
+  tooltipLeft = 0,
+}: BrushProps & WithTooltipProvidedProps<TooltipData>) => {
   const brushRef = useRef<BaseBrush | null>(null);
   const [filteredStock, setFilteredStock] = useState(stock.prices);
 
@@ -108,43 +127,14 @@ function BrushChart({
 
   const initialBrushPosition = useMemo(
     () => ({
-      start: {x: brushDateScale(getDate(stock.prices[50]))},
-      end: {x: brushDateScale(getDate(stock.prices[100]))},
+      start: {x: brushDateScale(getDate(stock.prices[stock.prices.length ? stock.prices.length - 40 : 50]))},
+      end: {x: brushDateScale(getDate(stock.prices[stock.prices.length ? stock.prices.length - 1 : 100]))},
     }),
     [brushDateScale],
   );
 
-  // event handlers
-  const handleClearClick = () => {
-    if (brushRef?.current) {
-      setFilteredStock(stock.prices);
-      brushRef.current.reset();
-    }
-  };
-
-  const handleResetClick = () => {
-    if (brushRef?.current) {
-      const updater: UpdateBrush = (prevBrush) => {
-        const newExtent = brushRef.current!.getExtent(
-          initialBrushPosition.start,
-          initialBrushPosition.end,
-        );
-
-        const newState: BaseBrushState = {
-          ...prevBrush,
-          start: {y: newExtent.y0, x: newExtent.x0},
-          end: {y: newExtent.y1, x: newExtent.x1},
-          extent: newExtent,
-        };
-
-        return newState;
-      };
-      brushRef.current.updateBrush(updater);
-    }
-  };
-
   return (
-    <div>
+    <Card css={{width, marginLeft: "auto", marginRight: "auto"}}>
       <svg width={width} height={height}>
         <LinearGradient id={GRADIENT_ID} from={background} to={background2} rotate={45}/>
         <rect x={0} y={0} width={width} height={height} fill={`url(#${GRADIENT_ID})`} rx={14}/>
@@ -156,6 +146,13 @@ function BrushChart({
           xScale={dateScale}
           yScale={stockScale}
           gradientColor={background2}
+          showTooltip={showTooltip}
+          hideTooltip={hideTooltip}
+          tooltipData={tooltipData}
+          tooltipTop={tooltipTop}
+          tooltipLeft={tooltipLeft}
+          topChartHeight={topChartHeight}
+          innerWidth={width - margin.right}
         />
         <AreaChart
           stock={stock.prices}
@@ -194,9 +191,33 @@ function BrushChart({
           />
         </AreaChart>
       </svg>
-    </div>
+      {tooltipData && (
+        <div>
+          <TooltipWithBounds
+            key={Math.random()}
+            top={tooltipTop - 24}
+            left={tooltipLeft + 12}
+            style={tooltipStyles}
+          >
+            {`$${getStockValue(tooltipData)}`}
+          </TooltipWithBounds>
+          <Tooltip
+            top={topChartHeight + margin.top - 10}
+            left={tooltipLeft}
+            style={{
+              ...defaultStyles,
+              minWidth: 72,
+              textAlign: "center",
+              transform: "translateX(-50%)",
+            }}
+          >
+            {formatDate(getDate(tooltipData))}
+          </Tooltip>
+        </div>
+      )}
+    </Card>
   );
-}
+});
 
 // We need to manually offset the handles for them to be rendered at the right position
 const BrushHandle = ({x, height, isBrushActive}: any) => {
