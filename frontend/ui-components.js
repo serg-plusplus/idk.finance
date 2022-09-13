@@ -1,29 +1,136 @@
 import React from 'react';
+import { Container, Button, Text, Link, Spacer, Modal, Row, Col, Checkbox } from '@nextui-org/react'
+import { Discovery, Search, ChevronRight } from 'react-iconly'
 
 export function SignInPrompt({greeting, onClick}) {
+  const [visible, setVisible] = React.useState(false);
+  const [selectedCheckbox, setSelectedCheckbox] = React.useState({
+    first: false,
+    second: false,
+    third: false,
+  });
+  const handler = () => setVisible(true);
+
+  const closeHandler = () => {
+    setVisible(false);
+  };
+
   return (
-    <main>
-      <h1>
-        The contract says: <span className="greeting">{greeting}</span>
-      </h1>
-      <h3>
-        Welcome to NEAR!
-      </h3>
-      <p>
-        Your contract is storing a greeting message in the NEAR blockchain. To
-        change it you need to sign in using the NEAR Wallet. It is very simple,
-        just use the button below.
-      </p>
-      <p>
-        Do not worry, this app runs in the test network ("testnet"). It works
-        just like the main network ("mainnet"), but using NEAR Tokens that are
-        only for testing!
-      </p>
-      <br/>
-      <p style={{ textAlign: 'center' }}>
-        <button onClick={onClick}>Sign in with NEAR Wallet</button>
-      </p>
-    </main>
+    <>
+      <main>
+        <Container
+          display="flex"
+          direction="column"
+          alignItems="center"
+          className="sign-in--container"
+          sm
+        >
+          <Text
+            h1
+            css={{
+              textGradient: "45deg, $blue600 -20%, $pink600 50%",
+            }}
+            weight="bold"
+          >
+            Decentralized Betting Protocol
+          </Text>
+          <Spacer y={0.5}/>
+          <Text size="$2xl">
+            <Link href="/" css={{display: "inline"}}>idk.finance</Link> is an automated prediction
+            market platform for tracking of and betting on future real-world events driven by
+            oracles and market incentives.
+          </Text>
+          <Spacer y={3}/>
+          <Row justify="center">
+            <Button onClick={handler} color="gradient" className="button">
+              <Discovery set="bold" primaryColor="currentColor"/>
+              <Spacer x={0.5}/>
+              Launch idk.finance
+            </Button>
+            <Spacer x={1}/>
+            <Button flat color="primary" className="button">
+              <Search set="bold" primaryColor="currentColor"/>
+              <Spacer x={0.5}/>
+              Learn more
+            </Button>
+          </Row>
+        </Container>
+      </main>
+      <Modal
+        closeButton
+        aria-labelledby="modal-title"
+        open={visible}
+        onClose={closeHandler}
+      >
+        <Modal.Header>
+          <Col>
+            <Text id="modal-title" size={18}>
+              Welcome to{" "}
+              <Text b size={18} css={{
+                textGradient: "45deg, $blue600 -20%, $pink600 50%",
+              }}>
+                idk.finance
+              </Text>
+            </Text>
+            <Text size={18}>
+              This Product is in beta.
+            </Text>
+          </Col>
+        </Modal.Header>
+        <Modal.Body>
+          <Text>
+            Once you enter a position, you cannot cancel or adjust it.
+          </Text>
+          <Checkbox
+            isSelected={selectedCheckbox.first}
+            onChange={() => setSelectedCheckbox(prevState => ({
+              ...prevState,
+              first: !prevState.first
+            }))}
+          >
+            <Text size={14}>I am over 21 years old.</Text>
+          </Checkbox>
+          <Checkbox
+            isSelected={selectedCheckbox.second}
+            onChange={() => setSelectedCheckbox(prevState => ({
+              ...prevState,
+              second: !prevState.second
+            }))}
+          >
+            <Text size={14}>
+              I understand that I am using this product at my own risk. Any losses incurred due to my actions are my own responsibility.
+            </Text>
+          </Checkbox>
+          <Checkbox
+            isSelected={selectedCheckbox.third}
+            onChange={() => setSelectedCheckbox(prevState => ({
+              ...prevState,
+              third: !prevState.third
+            }))}
+          >
+            <Text size={14}>
+              I understand that this product is still in beta. I am participating at my own risk.
+            </Text>
+          </Checkbox>
+        </Modal.Body>
+        <Modal.Footer>
+          <Row justify="center">
+            <Button
+              disabled={Object.values(selectedCheckbox).filter(item => !item).length >= 1}
+              onClick={() => {
+                closeHandler();
+                onClick();
+              }}
+              className="button"
+            >
+              Continue
+              <Spacer x={0.5}/>
+              <ChevronRight set="bold" primaryColor="currentColor"/>
+            </Button>
+          </Row>
+        </Modal.Footer>
+      </Modal>
+    </>
   );
 }
 

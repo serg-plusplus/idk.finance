@@ -11,10 +11,13 @@ html {
   --success: rgb(90, 206, 132);
   --primary: #FF585D;
   --secondary: #0072CE;
+  --nextui-fonts-sans: "General Sans",-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif !important;
+  --nextui-letterSpacings-tighter: -0.025em !important;
+  --nextui-letterSpacings-tight: 0 !important;
+  --nextui-letterSpacings-normal: 0 !important;
 
   background-color: var(--bg);
   color: var(--fg);
-  font-family: -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
   font-size: calc(0.9em + 0.5vw);
   line-height: 1.3;
 }
@@ -24,24 +27,24 @@ body {
   padding: 1em;
 }
 
-main {
-  margin: 0 auto;
-  max-width: 26em;
-}
+/*main {*/
+/*  margin: 0 auto;*/
+/*  max-width: 26em;*/
+/*}*/
 
 main.please-wait {
 }
 
-h1 {
-  background-image: url(./logo-black.svg);
-  background-position: center 1em;
-  background-repeat: no-repeat;
-  background-size: auto 1.5em;
-  margin-top: 0;
-  padding: 3.5em 0 0;
-  text-align: center;
-  font-size: 1.5em;
-}
+/*h1 {*/
+/*  background-image: url(./logo-black.svg);*/
+/*  background-position: center 1em;*/
+/*  background-repeat: no-repeat;*/
+/*  background-size: auto 1.5em;*/
+/*  margin-top: 0;*/
+/*  padding: 3.5em 0 0;*/
+/*  text-align: center;*/
+/*  font-size: 1.5em;*/
+/*}*/
 .greeting {
   color: var(--secondary);
   text-decoration: underline;
@@ -228,4 +231,20 @@ main.please-wait .loader:after{
     -webkit-transform: rotate(360deg);
     transform: rotate(360deg);
   }
+}
+
+.button {
+  display: flex;
+  align-items: center;
+  font-size: 1rem;
+}
+
+.sign-in--container {
+  text-align: center;
+  padding-top: 5rem;
+}
+
+#near-wallet-selector-modal {
+  position: relative;
+  z-index: 10000;
 }
