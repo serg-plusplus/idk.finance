@@ -502,11 +502,56 @@ function input() {
   env.input(0);
   return env.read_register(0);
 }
+function promiseAnd(...promiseIndex) {
+  return env.promise_and(...promiseIndex);
+}
 function promiseBatchCreate(accountId) {
   return env.promise_batch_create(accountId);
 }
+function promiseBatchThen(promiseIndex, accountId) {
+  return env.promise_batch_then(promiseIndex, accountId);
+}
+function promiseBatchActionCreateAccount(promiseIndex) {
+  env.promise_batch_action_create_account(promiseIndex);
+}
+function promiseBatchActionDeployContract(promiseIndex, code) {
+  env.promise_batch_action_deploy_contract(promiseIndex, code);
+}
+function promiseBatchActionFunctionCall(promiseIndex, methodName, args, amount, gas) {
+  env.promise_batch_action_function_call(promiseIndex, methodName, args, amount, gas);
+}
 function promiseBatchActionTransfer(promiseIndex, amount) {
   env.promise_batch_action_transfer(promiseIndex, amount);
+}
+function promiseBatchActionStake(promiseIndex, amount, publicKey) {
+  env.promise_batch_action_stake(promiseIndex, amount, publicKey);
+}
+function promiseBatchActionAddKeyWithFullAccess(promiseIndex, publicKey, nonce) {
+  env.promise_batch_action_add_key_with_full_access(promiseIndex, publicKey, nonce);
+}
+function promiseBatchActionAddKeyWithFunctionCall(promiseIndex, publicKey, nonce, allowance, receiverId, methodNames) {
+  env.promise_batch_action_add_key_with_function_call(promiseIndex, publicKey, nonce, allowance, receiverId, methodNames);
+}
+function promiseBatchActionDeleteKey(promiseIndex, publicKey) {
+  env.promise_batch_action_delete_key(promiseIndex, publicKey);
+}
+function promiseBatchActionDeleteAccount(promiseIndex, beneficiaryId) {
+  env.promise_batch_action_delete_account(promiseIndex, beneficiaryId);
+}
+function promiseBatchActionFunctionCallWeight(promiseIndex, methodName, args, amount, gas, weight) {
+  env.promise_batch_action_function_call_weight(promiseIndex, methodName, args, amount, gas, weight);
+}
+function promiseResult(resultIdx) {
+  let status = env.promise_result(resultIdx, 0);
+
+  if (status == PromiseResult.Successful) {
+    return env.read_register(0);
+  } else {
+    throw Error(`Promise result ${status == PromiseResult.Failed ? "Failed" : status == PromiseResult.NotReady ? "NotReady" : status}`);
+  }
+}
+function promiseReturn(promiseIdx) {
+  env.promise_return(promiseIdx);
 }
 function storageWrite(key, value) {
   let exist = env.storage_write(key, value, EVICTED_REGISTER);
@@ -943,6 +988,287 @@ class UnorderedSet {
 
 }
 
+class PromiseAction {}
+class CreateAccount extends PromiseAction {
+  add(promise_index) {
+    promiseBatchActionCreateAccount(promise_index);
+  }
+
+}
+class DeployContract extends PromiseAction {
+  constructor(code) {
+    super();
+    this.code = code;
+  }
+
+  add(promise_index) {
+    promiseBatchActionDeployContract(promise_index, this.code);
+  }
+
+}
+class FunctionCall extends PromiseAction {
+  constructor(function_name, args, amount, gas) {
+    super();
+    this.function_name = function_name;
+    this.args = args;
+    this.amount = amount;
+    this.gas = gas;
+  }
+
+  add(promise_index) {
+    promiseBatchActionFunctionCall(promise_index, this.function_name, this.args, this.amount, this.gas);
+  }
+
+}
+class FunctionCallWeight extends PromiseAction {
+  constructor(function_name, args, amount, gas, weight) {
+    super();
+    this.function_name = function_name;
+    this.args = args;
+    this.amount = amount;
+    this.gas = gas;
+    this.weight = weight;
+  }
+
+  add(promise_index) {
+    promiseBatchActionFunctionCallWeight(promise_index, this.function_name, this.args, this.amount, this.gas, this.weight);
+  }
+
+}
+class Transfer extends PromiseAction {
+  constructor(amount) {
+    super();
+    this.amount = amount;
+  }
+
+  add(promise_index) {
+    promiseBatchActionTransfer(promise_index, this.amount);
+  }
+
+}
+class Stake extends PromiseAction {
+  constructor(amount, public_key) {
+    super();
+    this.amount = amount;
+    this.public_key = public_key;
+  }
+
+  add(promise_index) {
+    promiseBatchActionStake(promise_index, this.amount, this.public_key.data);
+  }
+
+}
+class AddFullAccessKey extends PromiseAction {
+  constructor(public_key, nonce) {
+    super();
+    this.public_key = public_key;
+    this.nonce = nonce;
+  }
+
+  add(promise_index) {
+    promiseBatchActionAddKeyWithFullAccess(promise_index, this.public_key.data, this.nonce);
+  }
+
+}
+class AddAccessKey extends PromiseAction {
+  constructor(public_key, allowance, receiver_id, function_names, nonce) {
+    super();
+    this.public_key = public_key;
+    this.allowance = allowance;
+    this.receiver_id = receiver_id;
+    this.function_names = function_names;
+    this.nonce = nonce;
+  }
+
+  add(promise_index) {
+    promiseBatchActionAddKeyWithFunctionCall(promise_index, this.public_key.data, this.nonce, this.allowance, this.receiver_id, this.function_names);
+  }
+
+}
+class DeleteKey extends PromiseAction {
+  constructor(public_key) {
+    super();
+    this.public_key = public_key;
+  }
+
+  add(promise_index) {
+    promiseBatchActionDeleteKey(promise_index, this.public_key.data);
+  }
+
+}
+class DeleteAccount extends PromiseAction {
+  constructor(beneficiary_id) {
+    super();
+    this.beneficiary_id = beneficiary_id;
+  }
+
+  add(promise_index) {
+    promiseBatchActionDeleteAccount(promise_index, this.beneficiary_id);
+  }
+
+}
+
+class PromiseSingle {
+  constructor(account_id, actions, after, promise_index) {
+    this.account_id = account_id;
+    this.actions = actions;
+    this.after = after;
+    this.promise_index = promise_index;
+  }
+
+  constructRecursively() {
+    if (this.promise_index !== null) {
+      return this.promise_index;
+    }
+
+    let promise_index;
+
+    if (this.after) {
+      promise_index = promiseBatchThen(this.after.constructRecursively(), this.account_id);
+    } else {
+      promise_index = promiseBatchCreate(this.account_id);
+    }
+
+    for (let action of this.actions) {
+      action.add(promise_index);
+    }
+
+    this.promise_index = promise_index;
+    return promise_index;
+  }
+
+}
+
+class PromiseJoint {
+  constructor(promise_a, promise_b, promise_index) {
+    this.promise_a = promise_a;
+    this.promise_b = promise_b;
+    this.promise_index = promise_index;
+  }
+
+  constructRecursively() {
+    if (this.promise_index !== null) {
+      return this.promise_index;
+    }
+
+    let res = promiseAnd(BigInt(this.promise_a.constructRecursively()), BigInt(this.promise_b.constructRecursively()));
+    this.promise_index = res;
+    return res;
+  }
+
+}
+class NearPromise {
+  constructor(subtype, should_return) {
+    this.subtype = subtype;
+    this.should_return = should_return;
+  }
+
+  static new(account_id) {
+    let subtype = new PromiseSingle(account_id, [], null, null);
+    let ret = new NearPromise(subtype, false);
+    return ret;
+  }
+
+  add_action(action) {
+    if (this.subtype instanceof PromiseJoint) {
+      throw new Error("Cannot add action to a joint promise.");
+    } else {
+      this.subtype.actions.push(action);
+    }
+
+    return this;
+  }
+
+  createAccount() {
+    return this.add_action(new CreateAccount());
+  }
+
+  deployContract(code) {
+    return this.add_action(new DeployContract(code));
+  }
+
+  functionCall(function_name, args, amount, gas) {
+    return this.add_action(new FunctionCall(function_name, args, amount, gas));
+  }
+
+  functionCallWeight(function_name, args, amount, gas, weight) {
+    return this.add_action(new FunctionCallWeight(function_name, args, amount, gas, weight));
+  }
+
+  transfer(amount) {
+    return this.add_action(new Transfer(amount));
+  }
+
+  stake(amount, public_key) {
+    return this.add_action(new Stake(amount, public_key));
+  }
+
+  addFullAccessKey(public_key) {
+    return this.addFullAccessKeyWithNonce(public_key, 0n);
+  }
+
+  addFullAccessKeyWithNonce(public_key, nonce) {
+    return this.add_action(new AddFullAccessKey(public_key, nonce));
+  }
+
+  addAccessKey(public_key, allowance, receiver_id, method_names) {
+    return this.addAccessKeyWithNonce(public_key, allowance, receiver_id, method_names, 0n);
+  }
+
+  addAccessKeyWithNonce(public_key, allowance, receiver_id, method_names, nonce) {
+    return this.add_action(new AddAccessKey(public_key, allowance, receiver_id, method_names, nonce));
+  }
+
+  deleteKey(public_key) {
+    return this.add_action(new DeleteKey(public_key));
+  }
+
+  deleteAccount(beneficiary_id) {
+    return this.add_action(new DeleteAccount(beneficiary_id));
+  }
+
+  and(other) {
+    let subtype = new PromiseJoint(this, other, null);
+    let ret = new NearPromise(subtype, false);
+    return ret;
+  }
+
+  then(other) {
+    if (other.subtype instanceof PromiseSingle) {
+      if (other.subtype.after !== null) {
+        throw new Error("Cannot callback promise which is already scheduled after another");
+      }
+
+      other.subtype.after = this;
+    } else {
+      throw new Error("Cannot callback joint promise.");
+    }
+
+    return other;
+  }
+
+  asReturn() {
+    this.should_return = true;
+    return this;
+  }
+
+  constructRecursively() {
+    let res = this.subtype.constructRecursively();
+
+    if (this.should_return) {
+      promiseReturn(res);
+    }
+
+    return res;
+  } // Called by NearBindgen, when return object is a NearPromise instance.
+
+
+  onReturn() {
+    this.asReturn().constructRecursively();
+  }
+
+}
+
 let Position;
 
 (function (Position) {
@@ -978,32 +1304,39 @@ class Round {
 
 }
 
-var _dec, _dec2, _dec3, _dec4, _dec5, _dec6, _dec7, _dec8, _dec9, _dec10, _dec11, _dec12, _dec13, _dec14, _dec15, _dec16, _dec17, _class, _class2;
+var _dec, _dec2, _dec3, _dec4, _dec5, _dec6, _dec7, _dec8, _dec9, _dec10, _dec11, _dec12, _dec13, _dec14, _dec15, _dec16, _dec17, _dec18, _class, _class2;
 let PredictionMarket = (_dec = NearBindgen({}), _dec2 = initialize({}), _dec3 = view({}), _dec4 = view({}), _dec5 = call({
   payableFunction: true
-}), _dec6 = call({}), _dec7 = call({}), _dec8 = call({}), _dec9 = call({}), _dec10 = call({}), _dec11 = call({}), _dec12 = call({}), _dec13 = call({}), _dec14 = call({}), _dec15 = call({}), _dec16 = call({}), _dec17 = view({}), _dec(_class = (_class2 = class PredictionMarket {
+}), _dec6 = call({}), _dec7 = call({}), _dec8 = call({
+  privateFunction: true
+}), _dec9 = call({}), _dec10 = call({}), _dec11 = call({
+  privateFunction: true
+}), _dec12 = call({}), _dec13 = call({}), _dec14 = call({}), _dec15 = call({}), _dec16 = call({}), _dec17 = call({}), _dec18 = view({}), _dec(_class = (_class2 = class PredictionMarket {
   owner = "admin.idk.near";
   pendingOwner = "";
-  manager = "manager.idk.near";
   oracle = "oracleprice.near";
+  oracleParams = JSON.stringify({
+    asset_ids: ["wrap.near"]
+  });
+  oracleGas = "50000000000000";
+  timeDelay = "1800";
   assetId = "wrap.near";
   minBid = "1000";
   duration = "1800";
   feeRate = "10";
   feePrecision = "1000";
   feeTreasury = "0";
-  _temporary_price = "0";
   currentEpoch = 0;
   bids = new LookupMap("b");
   rounds = new LookupMap("r");
   userRounds = new LookupMap("u");
+  prices = new LookupMap("p");
 
   init({
     owner,
     manager
   }) {
     this.owner = owner;
-    this.manager = manager;
   } // VIEW
 
 
@@ -1013,9 +1346,7 @@ let PredictionMarket = (_dec = NearBindgen({}), _dec2 = initialize({}), _dec3 = 
       genesisStartOnce: this.genesisStartOnce,
       owner: this.owner,
       pendingOwner: this.pendingOwner,
-      manager: this.manager,
       oracle: this.oracle,
-      assetId: this.assetId,
       minBid: this.minBid.toString(),
       duration: this.duration.toString(),
       feeRate: this.feeRate.toString(),
@@ -1102,6 +1433,14 @@ let PredictionMarket = (_dec = NearBindgen({}), _dec2 = initialize({}), _dec3 = 
   reveal({}) {
     assert(this.genesisLockOnce && this.genesisStartOnce, "Genesis rounds aren't finished");
 
+    this._requestPrice(this.currentEpoch, "_revealCallback");
+  }
+
+  _revealCallback({
+    epoch
+  }) {
+    assert(epoch == this.currentEpoch, "Epoch is wrong");
+
     let price = this._getPrice();
 
     this._safeLockRound(this.currentEpoch, price);
@@ -1127,6 +1466,14 @@ let PredictionMarket = (_dec = NearBindgen({}), _dec2 = initialize({}), _dec3 = 
   genesisLockRound({}) {
     assert(this.genesisStartOnce, "Genesis round is not started");
     assert(!this.genesisLockOnce, "Genesis round is locked");
+
+    this._requestPrice(this.currentEpoch, "_genesisLockRoundCallback");
+  }
+
+  _genesisLockRoundCallback({
+    epoch
+  }) {
+    assert(epoch == this.currentEpoch, "Epoch is wrong");
 
     let price = this._getPrice();
 
@@ -1165,13 +1512,6 @@ let PredictionMarket = (_dec = NearBindgen({}), _dec2 = initialize({}), _dec3 = 
 
     BigInt(this.feeRate);
     this.feeRate = feeRate;
-  }
-
-  setTemporaryPrice({
-    newPrice
-  }) {
-    BigInt(newPrice);
-    this._temporary_price = newPrice;
   }
 
   claimFee({
@@ -1307,8 +1647,17 @@ let PredictionMarket = (_dec = NearBindgen({}), _dec2 = initialize({}), _dec3 = 
   }
 
   _getPrice() {
-    // TODO
-    return BigInt(4.22);
+    const pricesInfo = JSON.parse(promiseResult(0));
+    let nearInfo = pricesInfo.prices[0];
+    assert(nearInfo.asset_id == this.assetId, "Asset id is wrong");
+    return BigInt(nearInfo.price.multiplier);
+  }
+
+  _requestPrice(epoch, callback) {
+    const promise = NearPromise.new(this.oracle).functionCall("get_price_data", this.oracleParams, BigInt(0), BigInt(this.oracleGas)).then(NearPromise.new(currentAccountId()).functionCall(callback, JSON.stringify({
+      epoch
+    }), BigInt(0), BigInt(this.oracleGas)));
+    return promise;
   }
 
   _setBetInfo(epoch, owner, betInfo) {
@@ -1340,7 +1689,7 @@ let PredictionMarket = (_dec = NearBindgen({}), _dec2 = initialize({}), _dec3 = 
     return round.oracleCalled && betInfo.amount != BigInt(0) && !betInfo.claimed && (BigInt(round.closePrice) > BigInt(round.lockPrice) && betInfo.position == Position.Bullish || BigInt(round.closePrice) < BigInt(round.lockPrice) && betInfo.position == Position.Bearish);
   }
 
-}, (_applyDecoratedDescriptor(_class2.prototype, "init", [_dec2], Object.getOwnPropertyDescriptor(_class2.prototype, "init"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "getState", [_dec3], Object.getOwnPropertyDescriptor(_class2.prototype, "getState"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "getRound", [_dec4], Object.getOwnPropertyDescriptor(_class2.prototype, "getRound"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "bet", [_dec5], Object.getOwnPropertyDescriptor(_class2.prototype, "bet"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "claim", [_dec6], Object.getOwnPropertyDescriptor(_class2.prototype, "claim"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "reveal", [_dec7], Object.getOwnPropertyDescriptor(_class2.prototype, "reveal"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "genesisStartRound", [_dec8], Object.getOwnPropertyDescriptor(_class2.prototype, "genesisStartRound"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "genesisLockRound", [_dec9], Object.getOwnPropertyDescriptor(_class2.prototype, "genesisLockRound"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "setMinBid", [_dec10], Object.getOwnPropertyDescriptor(_class2.prototype, "setMinBid"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "setDuration", [_dec11], Object.getOwnPropertyDescriptor(_class2.prototype, "setDuration"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "setFeeRate", [_dec12], Object.getOwnPropertyDescriptor(_class2.prototype, "setFeeRate"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "setTemporaryPrice", [_dec13], Object.getOwnPropertyDescriptor(_class2.prototype, "setTemporaryPrice"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "claimFee", [_dec14], Object.getOwnPropertyDescriptor(_class2.prototype, "claimFee"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "transferOwnership", [_dec15], Object.getOwnPropertyDescriptor(_class2.prototype, "transferOwnership"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "confirmTransferOwnership", [_dec16], Object.getOwnPropertyDescriptor(_class2.prototype, "confirmTransferOwnership"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "claimable", [_dec17], Object.getOwnPropertyDescriptor(_class2.prototype, "claimable"), _class2.prototype)), _class2)) || _class);
+}, (_applyDecoratedDescriptor(_class2.prototype, "init", [_dec2], Object.getOwnPropertyDescriptor(_class2.prototype, "init"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "getState", [_dec3], Object.getOwnPropertyDescriptor(_class2.prototype, "getState"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "getRound", [_dec4], Object.getOwnPropertyDescriptor(_class2.prototype, "getRound"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "bet", [_dec5], Object.getOwnPropertyDescriptor(_class2.prototype, "bet"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "claim", [_dec6], Object.getOwnPropertyDescriptor(_class2.prototype, "claim"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "reveal", [_dec7], Object.getOwnPropertyDescriptor(_class2.prototype, "reveal"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "_revealCallback", [_dec8], Object.getOwnPropertyDescriptor(_class2.prototype, "_revealCallback"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "genesisStartRound", [_dec9], Object.getOwnPropertyDescriptor(_class2.prototype, "genesisStartRound"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "genesisLockRound", [_dec10], Object.getOwnPropertyDescriptor(_class2.prototype, "genesisLockRound"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "_genesisLockRoundCallback", [_dec11], Object.getOwnPropertyDescriptor(_class2.prototype, "_genesisLockRoundCallback"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "setMinBid", [_dec12], Object.getOwnPropertyDescriptor(_class2.prototype, "setMinBid"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "setDuration", [_dec13], Object.getOwnPropertyDescriptor(_class2.prototype, "setDuration"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "setFeeRate", [_dec14], Object.getOwnPropertyDescriptor(_class2.prototype, "setFeeRate"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "claimFee", [_dec15], Object.getOwnPropertyDescriptor(_class2.prototype, "claimFee"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "transferOwnership", [_dec16], Object.getOwnPropertyDescriptor(_class2.prototype, "transferOwnership"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "confirmTransferOwnership", [_dec17], Object.getOwnPropertyDescriptor(_class2.prototype, "confirmTransferOwnership"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "claimable", [_dec18], Object.getOwnPropertyDescriptor(_class2.prototype, "claimable"), _class2.prototype)), _class2)) || _class);
 function claimable() {
   let _state = PredictionMarket._getState();
 
@@ -1422,27 +1771,6 @@ function claimFee() {
 
   if (_result !== undefined) if (_result && _result.constructor && _result.constructor.name === "NearPromise") _result.onReturn();else env.value_return(PredictionMarket._serialize(_result));
 }
-function setTemporaryPrice() {
-  let _state = PredictionMarket._getState();
-
-  if (!_state && PredictionMarket._requireInit()) {
-    throw new Error("Contract must be initialized");
-  }
-
-  let _contract = PredictionMarket._create();
-
-  if (_state) {
-    PredictionMarket._reconstruct(_contract, _state);
-  }
-
-  let _args = PredictionMarket._getArgs();
-
-  let _result = _contract.setTemporaryPrice(_args);
-
-  PredictionMarket._saveToStorage(_contract);
-
-  if (_result !== undefined) if (_result && _result.constructor && _result.constructor.name === "NearPromise") _result.onReturn();else env.value_return(PredictionMarket._serialize(_result));
-}
 function setFeeRate() {
   let _state = PredictionMarket._getState();
 
@@ -1506,6 +1834,27 @@ function setMinBid() {
 
   if (_result !== undefined) if (_result && _result.constructor && _result.constructor.name === "NearPromise") _result.onReturn();else env.value_return(PredictionMarket._serialize(_result));
 }
+function _genesisLockRoundCallback() {
+  let _state = PredictionMarket._getState();
+
+  if (!_state && PredictionMarket._requireInit()) {
+    throw new Error("Contract must be initialized");
+  }
+
+  let _contract = PredictionMarket._create();
+
+  if (_state) {
+    PredictionMarket._reconstruct(_contract, _state);
+  }
+
+  let _args = PredictionMarket._getArgs();
+
+  let _result = _contract._genesisLockRoundCallback(_args);
+
+  PredictionMarket._saveToStorage(_contract);
+
+  if (_result !== undefined) if (_result && _result.constructor && _result.constructor.name === "NearPromise") _result.onReturn();else env.value_return(PredictionMarket._serialize(_result));
+}
 function genesisLockRound() {
   let _state = PredictionMarket._getState();
 
@@ -1543,6 +1892,27 @@ function genesisStartRound() {
   let _args = PredictionMarket._getArgs();
 
   let _result = _contract.genesisStartRound(_args);
+
+  PredictionMarket._saveToStorage(_contract);
+
+  if (_result !== undefined) if (_result && _result.constructor && _result.constructor.name === "NearPromise") _result.onReturn();else env.value_return(PredictionMarket._serialize(_result));
+}
+function _revealCallback() {
+  let _state = PredictionMarket._getState();
+
+  if (!_state && PredictionMarket._requireInit()) {
+    throw new Error("Contract must be initialized");
+  }
+
+  let _contract = PredictionMarket._create();
+
+  if (_state) {
+    PredictionMarket._reconstruct(_contract, _state);
+  }
+
+  let _args = PredictionMarket._getArgs();
+
+  let _result = _contract._revealCallback(_args);
 
   PredictionMarket._saveToStorage(_contract);
 
@@ -1663,5 +2033,5 @@ function init() {
   if (_result !== undefined) if (_result && _result.constructor && _result.constructor.name === "NearPromise") _result.onReturn();else env.value_return(PredictionMarket._serialize(_result));
 }
 
-export { bet, claim, claimFee, claimable, confirmTransferOwnership, genesisLockRound, genesisStartRound, getRound, getState, init, reveal, setDuration, setFeeRate, setMinBid, setTemporaryPrice, transferOwnership };
+export { _genesisLockRoundCallback, _revealCallback, bet, claim, claimFee, claimable, confirmTransferOwnership, genesisLockRound, genesisStartRound, getRound, getState, init, reveal, setDuration, setFeeRate, setMinBid, transferOwnership };
 //# sourceMappingURL=prediction_market.js.map
