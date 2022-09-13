@@ -99,7 +99,35 @@ class PredictionMarket {
     near.log(`${sender} bids in the ${epoch} epoch. Amount is ${amount}`);
   }
 
-  // ORACLE
+  @call({})
+  claim({ epochs }: { epochs: number[] }): void {
+    let reward = BigInt(0);
+    const sender = near.predecessorAccountId();
+
+    for (let epoch of epochs) {
+      let round = this._getRound(epoch);
+
+      assert(round.startTimestamp != BigInt(0), "Round isn't started");
+      assert(round.closeTimestamp < near.blockTimestamp(), "Round isn't ended");
+      assert(round.oracleCalled, "Oracle isn't called");
+      assert(this.claimable(epoch, sender), "Not eligible");
+
+      let betInfo = this._getBetInfo(epoch, sender);
+      const epochReward =
+        (betInfo.amount * round.rewardAmount) / round.rewardBaseCalAmount;
+
+      reward += epochReward;
+      betInfo.claimed = true;
+
+      this._setBetInfo(epoch, sender, betInfo);
+
+      near.log(`${sender} claimed ${epochReward} for ${epoch} round.`);
+    }
+
+    if (reward > 0) {
+      this._safeTransfer(sender, reward);
+    }
+  }
 
   @call({})
   reveal({}: {}): void {
@@ -115,6 +143,28 @@ class PredictionMarket {
 
     this.currentEpoch += 1;
     this._safeStartRound(this.currentEpoch);
+  }
+
+  @call({})
+  genesisStartRound({}: {}): void {
+    assert(!this.genesisStartOnce, "Genesis round is started");
+
+    this.currentEpoch += 1;
+    this._startRound(this.currentEpoch);
+    this.genesisStartOnce = true;
+  }
+
+  @call({})
+  genesisLockRound({}: {}): void {
+    assert(this.genesisStartOnce, "Genesis round is not started");
+    assert(!this.genesisLockOnce, "Genesis round is locked");
+
+    let price = this._getPrice();
+    this._safeLockRound(this.currentEpoch, price);
+
+    this.currentEpoch += 1;
+    this._startRound(this.currentEpoch);
+    this.genesisLockOnce = true;
   }
 
   // ADMIN
@@ -140,8 +190,7 @@ class PredictionMarket {
   @call({})
   claimFee({ receiver }: { receiver: string }): void {
     this._assertOwner();
-    const promise = near.promiseBatchCreate(receiver);
-    near.promiseBatchActionTransfer(promise, this.feeTreasury);
+    this._safeTransfer(receiver, this.feeTreasury);
     this.feeTreasury = BigInt(0);
   }
 
@@ -189,7 +238,7 @@ class PredictionMarket {
     near.log(`Rewards for ${epoch} round calculated`);
   }
 
-  _safeEndRound(epoch: number, price: bigint): void {
+  _safeLockRound(epoch: number, price: bigint): void {
     let round = this._getRound(epoch);
 
     assert(round.startTimestamp != BigInt(0), "Round n-1 is not started");
@@ -203,13 +252,14 @@ class PredictionMarket {
     near.log(`The round ${epoch} locked`);
   }
 
-  _safeLockRound(epoch: number, price: bigint): void {
+  _safeEndRound(epoch: number, price: bigint): void {
     let round = this._getRound(epoch);
 
     assert(round.lockTimestamp != BigInt(0), "Round n-1 is not started");
     assert(round.closeTimestamp < near.blockTimestamp(), "End is too early");
 
     round.closePrice = price;
+    round.oracleCalled = true;
 
     this._setRound(epoch, round);
 
@@ -307,5 +357,29 @@ class PredictionMarket {
 
   _setUserRounds(owner: string, userRounds: UnorderedSet): void {
     this.userRounds.set(owner, userRounds);
+  }
+
+  _safeTransfer(receiver: string, amount: bigint): void {
+    const promise = near.promiseBatchCreate(receiver);
+    near.promiseBatchActionTransfer(promise, amount);
+  }
+
+  @view({})
+  claimable(epoch: number, owner: string): boolean {
+    let round = this._getRound(epoch);
+    let betInfo = this._getBetInfo(epoch, owner);
+
+    if (round.lockPrice == round.closePrice) {
+      return false;
+    }
+    return (
+      round.oracleCalled &&
+      betInfo.amount != BigInt(0) &&
+      !betInfo.claimed &&
+      ((round.closePrice > round.lockPrice &&
+        betInfo.position == Position.Bullish) ||
+        (round.closePrice < round.lockPrice &&
+          betInfo.position == Position.Bearish))
+    );
   }
 }
