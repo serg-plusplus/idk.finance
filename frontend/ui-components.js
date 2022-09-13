@@ -1,6 +1,6 @@
 import React from 'react';
 import { Container, Button, Text, Link, Spacer, Modal, Row, Col, Checkbox } from '@nextui-org/react'
-import { Discovery, Search, ChevronRight } from 'react-iconly'
+import { Discovery, ChevronRight, Search } from './icons';
 
 export function SignInPrompt({greeting, onClick}) {
   const [visible, setVisible] = React.useState(false);
@@ -43,13 +43,13 @@ export function SignInPrompt({greeting, onClick}) {
           <Spacer y={3}/>
           <Row justify="center">
             <Button onClick={handler} color="gradient" className="button">
-              <Discovery set="bold" primaryColor="currentColor"/>
+              <Discovery />
               <Spacer x={0.5}/>
               Launch idk.finance
             </Button>
             <Spacer x={1}/>
             <Button flat color="primary" className="button">
-              <Search set="bold" primaryColor="currentColor"/>
+              <Search />
               <Spacer x={0.5}/>
               Learn more
             </Button>
@@ -125,7 +125,7 @@ export function SignInPrompt({greeting, onClick}) {
             >
               Continue
               <Spacer x={0.5}/>
-              <ChevronRight set="bold" primaryColor="currentColor"/>
+              <ChevronRight />
             </Button>
           </Row>
         </Modal.Footer>
