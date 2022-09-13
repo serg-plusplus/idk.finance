@@ -1,7 +1,9 @@
+import { useCallback, useEffect, useState } from "react";
 import constate from "constate";
+import BigNumber from "bignumber.js";
 
 import type { Wallet } from "./near-wallet";
-import { useCallback, useEffect, useState } from "react";
+import { ChartData, getChartData } from "./chart/chart-data";
 
 export type IdkStateProviderProps = {
   isSignedIn: boolean;
@@ -48,10 +50,13 @@ export enum Position {
 export type Snapshot = {
   state: IdkState;
   latestRounds: IdkRound[];
+  chartData: ChartData;
 };
 
 export const [IdkStateProvider, useIdkState] = constate(
   ({ isSignedIn, wallet }: IdkStateProviderProps) => {
+    // VIEW
+
     const getState = useCallback(async (): Promise<IdkState> => {
       return await wallet.viewMethod({ method: "getState" });
     }, [wallet]);
@@ -78,18 +83,58 @@ export const [IdkStateProvider, useIdkState] = constate(
       [getRound]
     );
 
+    // SNAPSHOT
+
+    const [snapshot, setSnapshot] = useState<Snapshot>();
+
+    useEffect(() => {
+      const syncAndDefer = async () => {
+        const [{ state, latestRounds }, chartData] = await Promise.all([
+          (async () => {
+            const state = await getState();
+
+            const latestRounds = await Promise.all(
+              Array.from({ length: Math.min(state.currentEpoch, 16) }).map(
+                (_, i) =>
+                  i > 1
+                    ? getRound(state.currentEpoch - i)
+                    : getRoundMemo(state.currentEpoch - i)
+              )
+            );
+
+            return { state, latestRounds };
+          })(),
+          getChartData(),
+        ]);
+
+        setSnapshot({ state, latestRounds, chartData });
+
+        setTimeout(syncAndDefer, 5_000);
+      };
+
+      syncAndDefer();
+    }, [setSnapshot, getState, getRound]);
+
+    // METHODS
+
     const bet = useCallback(
-      async ({ epoch, position }: { epoch: number; position: Position }) => {
+      async (position: Position, amount: string) => {
+        if (!snapshot) return;
+
         return await wallet.callMethod({
           method: "bet",
-          args: { epoch, position },
+          args: { epoch: snapshot.state.currentEpoch, position },
+          deposit: new BigNumber(amount)
+            .times(100000000000000)
+            .integerValue()
+            .toString(),
         });
       },
-      [wallet]
+      [wallet, snapshot]
     );
 
     const claim = useCallback(
-      async ({ epochs }: { epochs: number[] }) => {
+      async (epochs: number[]) => {
         return await wallet.callMethod({
           method: "bet",
           args: { epochs },
@@ -97,28 +142,6 @@ export const [IdkStateProvider, useIdkState] = constate(
       },
       [wallet]
     );
-
-    const [snapshot, setSnapshot] = useState<Snapshot>();
-
-    useEffect(() => {
-      const syncAndDefer = async () => {
-        const state = await getState();
-
-        const latestRounds = await Promise.all(
-          Array.from({ length: Math.min(state.currentEpoch, 16) }).map((_, i) =>
-            i > 1
-              ? getRound(state.currentEpoch - i)
-              : getRoundMemo(state.currentEpoch - i)
-          )
-        );
-
-        setSnapshot({ state, latestRounds });
-
-        setTimeout(syncAndDefer, 3_000);
-      };
-
-      syncAndDefer();
-    }, [setSnapshot, getState, getRound]);
 
     return {
       isSignedIn,

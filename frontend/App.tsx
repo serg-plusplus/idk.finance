@@ -12,7 +12,7 @@ import { useIdkState } from "./idk-state";
 import Header from "./Header/Header";
 
 const App: React.FC = () => {
-  const { isSignedIn, contract, wallet, getState } = useIdkState();
+  const { isSignedIn, wallet, getState } = useIdkState();
 
   const [valueFromBlockchain, setValueFromBlockchain] = React.useState();
   const [uiPleaseWait, setUiPleaseWait] = React.useState(true);
@@ -50,20 +50,20 @@ const App: React.FC = () => {
     e.preventDefault();
     setUiPleaseWait(true);
     const { greetingInput } = e.target.elements;
-    contract
-      .setGreeting(greetingInput.value)
-      .then(async () => {
-        return contract.getGreeting();
-      })
-      .then(setValueFromBlockchain)
-      .finally(() => {
-        setUiPleaseWait(false);
-      });
+    // contract
+    //   .setGreeting(greetingInput.value)
+    //   .then(async () => {
+    //     return contract.getGreeting();
+    //   })
+    //   .then(setValueFromBlockchain)
+    //   .finally(() => {
+    //     setUiPleaseWait(false);
+    //   });
   }
 
   return (
     <>
-      <Header/>
+      <Header />
       <SignOutButton
         accountId={wallet.accountId}
         onClick={() => wallet.signOut()}
