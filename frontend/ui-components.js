@@ -55,17 +55,22 @@ export function SignInPrompt({ onClick }) {
           </Text>
           <Spacer y={3} />
           <Row justify="center">
-            <Button onClick={handler} color="gradient" className="button">
+            <Button
+              onClick={handler}
+              color="gradient"
+              className="button"
+              size="lg"
+            >
               <Discovery />
               <Spacer x={0.5} />
               Launch idk.finance
             </Button>
-            <Spacer x={1} />
+            {/* <Spacer x={1} />
             <Button flat color="primary" className="button">
               <Search />
               <Spacer x={0.5} />
               Learn more
-            </Button>
+            </Button> */}
           </Row>
         </Container>
       </main>

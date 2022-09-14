@@ -1,19 +1,19 @@
-import {useRef, useState, useMemo, FC} from 'react';
+import {useRef, useState, useMemo, FC, useCallback, useEffect} from 'react';
 import {min, max, extent} from 'd3-array';
 import { timeFormat } from "d3-time-format";
 import {Card} from "@nextui-org/react";
 import {scaleTime, scaleLinear} from '@visx/scale';
 import {Brush} from '@visx/brush';
 import {Bounds} from '@visx/brush/lib/types';
-import BaseBrush, {BaseBrushState, UpdateBrush} from '@visx/brush/lib/BaseBrush';
+import BaseBrush from '@visx/brush/lib/BaseBrush';
 import {PatternLines} from '@visx/pattern';
 import {Group} from '@visx/group';
 import {LinearGradient} from '@visx/gradient';
 import {defaultStyles, Tooltip, TooltipWithBounds, withTooltip} from "@visx/tooltip";
-import {WithTooltipProvidedProps} from "@visx/tooltip/lib/enhancers/withTooltip";
 import AreaChart from './AreaChart';
 import AreaChart2 from './AreaChart2';
 import {ChartPoint} from "./chart-data";
+import {useIdkState} from "../idk-state";
 
 // Initialize some variables
 const brushMargin = {top: 10, bottom: 15, left: 50, right: 20};
@@ -37,7 +37,7 @@ const tooltipStyles = {
 // accessors
 const getDate = (d) => new Date(d[0]);
 const getStockValue = (d) => d[1];
-const formatDate = timeFormat("%b %d, '%y");
+const formatDate = timeFormat("%I:%M:%I %p %b %d, '%y");
 
 export type BrushProps = {
   width: number;
@@ -47,6 +47,33 @@ export type BrushProps = {
 };
 
 type TooltipData = ChartPoint;
+
+const rounds = [
+  {
+    end: 1663113379000,
+    start: 1663109779000,
+    value: 4.427542874635345,
+    roundNumber: 2,
+    totalPrice: 123.4321,
+    priceChange: 4.56,
+  },
+  {
+    end: 1663111579000,
+    start: 1663109779000,
+    value: 4.434234770282088,
+    roundNumber: 1,
+    totalPrice: 123.4321,
+    priceChange: -2.14,
+  },
+  {
+    end: 1663109779000,
+    start: 1663109779000,
+    value: 4.451723886361865,
+    roundNumber: 0,
+    totalPrice: 123.4321,
+    priceChange: 8.49,
+  },
+]
 
 const BrushChart: FC = withTooltip<BrushProps, TooltipData>(({
   width,
@@ -64,19 +91,52 @@ const BrushChart: FC = withTooltip<BrushProps, TooltipData>(({
   tooltipTop = 0,
   tooltipLeft = 0,
 }) => {
+  const state = useIdkState();
+  console.log('state', state)
   const brushRef = useRef<BaseBrush | null>(null);
-  const [filteredStock, setFilteredStock] = useState(stock.prices);
+  // const [savedIndexes, setSavedIndexes] = useState({from: 40, to: null});
 
-  const onBrushChange = (domain: Bounds | null) => {
+  const [filteredStock, setFilteredStock] = useState(stock.prices.slice(-40));
+
+  // useEffect(() => {
+  //   if (savedIndexes.to === null) {
+  //     setFilteredStock(stock.prices.slice(-savedIndexes.from))
+  //   } else {
+  //     setFilteredStock(stock.prices.slice(savedIndexes.from, savedIndexes.to))
+  //   }
+  // }, [stock.prices.slice, savedIndexes])
+
+  const filteredDataRounds = useMemo(() => rounds.map(round => {
+    if (round.end >= filteredStock[0][0] && round.end <= filteredStock[filteredStock.length - 1][0]) {
+      return round;
+    }
+  }), [filteredStock])
+
+
+  const onBrushChange = useCallback((domain: Bounds | null) => {
     if (!domain) return;
     const {x0, x1, y0, y1} = domain;
-    const stockCopy = stock.prices.filter((s) => {
+    // let isSaved = false;
+    // let firstIndex = 0;
+    // let lastIndex = stock.prices.length - 1;
+    const stockCopy = stock.prices.filter((s, index) => {
       const x = getDate(s).getTime();
       const y = getStockValue(s);
-      return x > x0 && x < x1 && y > y0 && y < y1;
+      if (x > x0 && x < x1 && y > y0 && y < y1) {
+        // if(!isSaved) {
+        //   firstIndex = index;
+        //   isSaved = true
+        // }
+        // lastIndex = index;
+
+        return true;
+      } else {
+        return false;
+      }
     });
+    // setSavedIndexes(prevState => ({from: firstIndex, to: prevState.from === null ? null : lastIndex}))
     setFilteredStock(stockCopy);
-  };
+  }, [stock.prices]);
 
   const innerHeight = height - margin.top - margin.bottom;
   const topChartBottomMargin = chartSeparation + 10;
@@ -91,11 +151,12 @@ const BrushChart: FC = withTooltip<BrushProps, TooltipData>(({
 
   // scales
   const dateScale = useMemo(
-    () =>
-      scaleTime<number>({
+    () => {
+      return scaleTime<number>({
         range: [0, xMax],
         domain: extent(filteredStock, getDate) as [Date, Date],
-      }),
+      })
+    },
     [xMax, filteredStock],
   );
   const stockScale = useMemo(
@@ -113,7 +174,7 @@ const BrushChart: FC = withTooltip<BrushProps, TooltipData>(({
         range: [0, xBrushMax],
         domain: extent(stock.prices, getDate) as [Date, Date],
       }),
-    [xBrushMax],
+    [xBrushMax, stock.prices],
   );
   const brushStockScale = useMemo(
     () =>
@@ -122,7 +183,7 @@ const BrushChart: FC = withTooltip<BrushProps, TooltipData>(({
         domain: [min(stock.prices, getStockValue) || 0, max(stock.prices, getStockValue) || 0],
         nice: true,
       }),
-    [yBrushMax],
+    [yBrushMax, stock.prices],
   );
 
   const initialBrushPosition = useMemo(
@@ -130,7 +191,7 @@ const BrushChart: FC = withTooltip<BrushProps, TooltipData>(({
       start: {x: brushDateScale(getDate(stock.prices[stock.prices.length ? stock.prices.length - 40 : 50]))},
       end: {x: brushDateScale(getDate(stock.prices[stock.prices.length ? stock.prices.length - 1 : 100]))},
     }),
-    [brushDateScale],
+    [brushDateScale, stock.prices],
   );
 
   return (
@@ -144,6 +205,7 @@ const BrushChart: FC = withTooltip<BrushProps, TooltipData>(({
           margin={{...margin, bottom: topChartBottomMargin}}
           yMax={yMax}
           xScale={dateScale}
+          barData={filteredDataRounds}
           yScale={stockScale}
           gradientColor={background2}
           showTooltip={showTooltip}
@@ -203,7 +265,7 @@ const BrushChart: FC = withTooltip<BrushProps, TooltipData>(({
           </TooltipWithBounds>
           <Tooltip
             top={topChartHeight + margin.top - 10}
-            left={tooltipLeft}
+            left={50 + tooltipLeft}
             style={{
               ...defaultStyles,
               minWidth: 72,
@@ -215,6 +277,27 @@ const BrushChart: FC = withTooltip<BrushProps, TooltipData>(({
           </Tooltip>
         </div>
       )}
+      {
+        filteredDataRounds?.map((d) => {
+          if (!d) {
+            return null;
+          }
+          return (
+            <div
+              style={{
+                ...defaultStyles,
+                textAlign: "center",
+                transform: "translateX(-50%)",
+                top: topChartHeight + margin.top,
+                left: 50 + dateScale(d.end),
+                backgroundColor: "rgba(255,255,255,.75)",
+              }}
+            >
+              #{d.roundNumber}
+            </div>
+          );
+        })
+      }
     </Card>
   );
 });
