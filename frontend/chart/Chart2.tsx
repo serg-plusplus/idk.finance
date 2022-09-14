@@ -261,10 +261,12 @@ const BrushChart: FC = withTooltip<BrushProps, TooltipData>(({
           <TooltipWithBounds
             key={Math.random()}
             top={tooltipTop - 24}
-            left={tooltipLeft + 12}
-            style={tooltipStyles}
+            left={'diff' in tooltipData ? tooltipLeft + 48 : tooltipLeft + 12}
+            style={{...tooltipStyles, whiteSpace: "pre-line"}}
           >
-            {`$${getStockValue(tooltipData)}`}
+            {'diff' in tooltipData
+              ? `$${(+getStockValue(tooltipData)).toFixed(2)}\nDiff: ${(100-tooltipData.diff).toFixed(2)}%\nTotal amount:${tooltipData.totalAmount}\nReward amount:${tooltipData.rewardAmount}`
+              : `$${(+getStockValue(tooltipData)).toFixed(2)}`}
           </TooltipWithBounds>
           <Tooltip
             top={topChartHeight + margin.top - 10}
