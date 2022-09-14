@@ -11,7 +11,7 @@
     "test": "npm run test:unit && npm run test:integration",
     "test:unit": "cd contract && npm test",
     "test:integration": "cd integration-tests && npm test -- -- \"./contract/build/prediction_market.wasm\"",
-    "postinstall": "cd frontend && npm install && cd .. && cd integration-tests && npm install && cd .. && cd contract && npm install"
+    "postinstall": "cd frontend && npm install && cd .. && cd integration-tests && npm install && cd .. && cd contract && npm install && cd .. && cd reveal-bot && npm install"
   },
   "devDependencies": {
     "near-cli": "^3.3.0"
