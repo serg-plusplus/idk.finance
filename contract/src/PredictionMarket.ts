@@ -13,22 +13,27 @@ import { BetInfo, Position } from "./BetInfo";
 import { Round } from "./Round";
 import { PricesResponse } from "./Oracle";
 
+enum Bool {
+  False = 0,
+  True = 1,
+}
+
 @NearBindgen({})
 class PredictionMarket {
-  genesisLockOnce: boolean;
-  genesisStartOnce: boolean;
+  genesisLockOnce: Bool = Bool.False;
+  genesisStartOnce: Bool = Bool.False;
 
   owner: string = "admin.idk.near";
   pendingOwner: string = "";
 
-  oracle: string = "oracleprice.near";
+  oracle: string = "priceoracle.testnet";
   oracleParams: string = JSON.stringify({ asset_ids: ["wrap.near"] });
   oracleGas: string = "50000000000000";
-  timeDelay: string = "1800";
+  timeDelay: string = "1800000000000";
   assetId: string = "wrap.near";
 
   minBid: string = "1000";
-  duration: string = "1800";
+  duration: string = "1800000000000";
 
   feeRate: string = "10";
   feePrecision: string = "1000";
@@ -156,7 +161,7 @@ class PredictionMarket {
   @call({})
   reveal({}: {}): void {
     assert(
-      this.genesisLockOnce && this.genesisStartOnce,
+      this.genesisLockOnce === Bool.True && this.genesisStartOnce === Bool.True,
       "Genesis rounds aren't finished"
     );
 
@@ -185,22 +190,22 @@ class PredictionMarket {
    */
   @call({})
   genesisStartRound({}: {}): void {
-    assert(!this.genesisStartOnce, "Genesis round is started");
+    assert(this.genesisStartOnce == Bool.False, "Genesis round is started");
 
     this.currentEpoch += 1;
     this._startRound(this.currentEpoch);
-    this.genesisStartOnce = true;
+    this.genesisStartOnce = Bool.True;
   }
 
   /**
    * @notice Request price and management of first 2 rounds
    */
   @call({})
-  genesisLockRound({}: {}): void {
-    assert(this.genesisStartOnce, "Genesis round is not started");
-    assert(!this.genesisLockOnce, "Genesis round is locked");
+  genesisLockRound({}: {}): NearPromise {
+    assert(this.genesisStartOnce === Bool.True, "Genesis round is not started");
+    assert(this.genesisLockOnce === Bool.False, "Genesis round is locked");
 
-    this._requestPrice(this.currentEpoch, "_genesisLockRoundCallback");
+    return this._requestPrice(this.currentEpoch, "_genesisLockRoundCallback");
   }
 
   /**
@@ -216,7 +221,7 @@ class PredictionMarket {
 
     this.currentEpoch += 1;
     this._startRound(this.currentEpoch);
-    this.genesisLockOnce = true;
+    this.genesisLockOnce = Bool.True;
   }
 
   // ADMIN
@@ -361,7 +366,7 @@ class PredictionMarket {
   _safeStartRound(epoch: number): void {
     let oldRound = this._getRound(epoch - 2);
 
-    assert(this.genesisStartOnce, "Init game first");
+    assert(this.genesisStartOnce === Bool.True, "Init game first");
     assert(
       BigInt(oldRound.closeTimestamp) != BigInt(0),
       "Round n-2 is not ended"
