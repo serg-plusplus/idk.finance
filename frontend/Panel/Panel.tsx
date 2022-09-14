@@ -345,7 +345,7 @@ const Panel: FC = () => {
 
 export default Panel;
 
-const toNear = (amount: BigNumber.Value) =>
+export const toNear = (amount: BigNumber.Value) =>
   new BigNumber(amount)
     .div("1000000000000000000000000")
     .toFixed(4, BigNumber.ROUND_UP)

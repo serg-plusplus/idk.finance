@@ -14,6 +14,7 @@ import AreaChart from './AreaChart';
 import AreaChart2 from './AreaChart2';
 import {ChartPoint} from "./chart-data";
 import {useIdkState} from "../idk-state";
+import {toNear} from "../Panel/Panel";
 
 // Initialize some variables
 const brushMargin = {top: 10, bottom: 15, left: 50, right: 20};
@@ -265,7 +266,7 @@ const BrushChart: FC = withTooltip<BrushProps, TooltipData>(({
             style={{...tooltipStyles, whiteSpace: "pre-line"}}
           >
             {'diff' in tooltipData
-              ? `$${(+getStockValue(tooltipData)).toFixed(2)}\nDiff: ${(100-tooltipData.diff).toFixed(2)}%\nTotal amount:${tooltipData.totalAmount}\nReward amount:${tooltipData.rewardAmount}`
+              ? `$${(+getStockValue(tooltipData)).toFixed(2)}\nDiff: ${(100-tooltipData.diff).toFixed(2)}%\nTotal amount:${toNear(tooltipData.totalAmount)} NEAR\nReward amount:${toNear(tooltipData.rewardAmount)} NEAR`
               : `$${(+getStockValue(tooltipData)).toFixed(2)}`}
           </TooltipWithBounds>
           <Tooltip
