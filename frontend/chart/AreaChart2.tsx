@@ -1,4 +1,4 @@
-import {FC, useCallback} from "react";
+import {FC, Fragment, useCallback} from "react";
 import { bisector } from "d3-array";
 import { Group } from '@visx/group';
 import {AreaClosed, Bar, Line} from '@visx/shape';
@@ -40,7 +40,7 @@ const AreaChart2: FC<any> = ({
   yMax,
   margin,
   xScale,
-  xScaleRounds,
+  barData,
   yScale,
   top,
   left,
@@ -76,7 +76,7 @@ const AreaChart2: FC<any> = ({
       }
       showTooltip({
         tooltipData: d,
-        tooltipLeft: x,
+        tooltipLeft: xScale(getDate(d)),
         tooltipTop: yScale(getStockValue(d)),
       });
     },
@@ -110,15 +110,6 @@ const AreaChart2: FC<any> = ({
         strokeOpacity={0.2}
         pointerEvents="none"
       />
-      <GridColumns
-        top={margin.top}
-        scale={xScaleRounds}
-        height={topChartHeight}
-        strokeDasharray="1,3"
-        stroke="blue"
-        strokeOpacity={1}
-        pointerEvents="none"
-      />
       <AreaClosed
         data={stock}
         x={(d) => xScale(getDate(d)) || 0}
@@ -129,6 +120,33 @@ const AreaChart2: FC<any> = ({
         fill="url(#gradient)"
         curve={curveMonotoneX}
       />
+      {barData?.map((d) => {
+        if (!d) {
+          return null;
+        }
+        const barWidth = 1;
+        const barHeight = yMax;
+        const barX = xScale(d.end);
+        return (
+          <Fragment key={`bar-${d.end}`}>
+            <Bar
+              x={barX}
+              y={0}
+              width={barWidth}
+              height={barHeight}
+              fill="blue"
+            />
+            <circle
+              key={`marker-circle${d.end}`}
+              r={3}
+              cx={xScale(d.end)}
+              cy={yScale(d.value)}
+              fill="blue"
+            />
+            {/*<MarkerCircle id={`marker-circle${d.end}`} fill="blue" size={2} refX={barX} />*/}
+          </Fragment>
+        );
+      })}
       {tooltipData && (
         <g>
           <Line
