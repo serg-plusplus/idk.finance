@@ -3,7 +3,7 @@
  */
 
 const CHART_DATA_URL =
-  "https://api.coingecko.com/api/v3/coins/near/market_chart?vs_currency=usd&days=0.4";
+  "https://api.coingecko.com/api/v3/coins/near/market_chart?vs_currency=usd&days=0.1";
 
 export type ChartPoint = [number, number];
 export type ChartData = {
