@@ -1,0 +1,12 @@
+{
+  "name": "@idk.finance/reveal-bot",
+  "version": "1.0.0",
+  "license": "(MIT AND Apache-2.0)",
+  "type": "module",
+  "scripts": {
+    "start": "node ./index.js"
+  },
+  "dependencies": {
+    "near-api-js": "^1.0.0"
+  }
+}
