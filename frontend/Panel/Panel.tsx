@@ -18,7 +18,7 @@ import {
 import { useIdkState } from "../idk-state";
 
 const Panel: FC = () => {
-  const { state, latestRounds, bet } = useIdkState();
+  const { state, latestRounds, bet, userBids } = useIdkState();
 
   const handleBetSubmit = useCallback((evt) => {
     evt.preventDefault();
@@ -56,31 +56,79 @@ const Panel: FC = () => {
                   </Grid>
                   <Grid xs={12}>
                     <Text css={{ color: "$accents8" }}>
-                      Total amount: {latestRounds[0].totalAmount}
+                      Started at:{" "}
+                      <Text
+                        weight="semibold"
+                        css={{ marginLeft: 4, display: "inline-block" }}
+                      >
+                        {format(toDate(prevRound.startTimestamp))}
+                      </Text>
                     </Text>
                   </Grid>
                   <Grid xs={12}>
                     <Text css={{ color: "$accents8" }}>
-                      Bears staked: {latestRounds[0].bearAmount}
+                      Period:{" "}
+                      <Text
+                        weight="semibold"
+                        css={{
+                          marginLeft: 4,
+                          marginRight: 8,
+                          display: "inline-block",
+                        }}
+                      >
+                        {format(toDate(prevRound.lockTimestamp))}
+                      </Text>
+                      -
+                      <Text
+                        weight="semibold"
+                        css={{ marginLeft: 8, display: "inline-block" }}
+                      >
+                        {format(toDate(prevRound.closeTimestamp))}
+                      </Text>
                     </Text>
                   </Grid>
                   <Grid xs={12}>
                     <Text css={{ color: "$accents8" }}>
-                      Bulls staked: {latestRounds[0].bullAmount}
+                      Total staked:{" "}
+                      <Text
+                        weight="semibold"
+                        css={{
+                          marginLeft: 4,
+                          marginRight: 8,
+                          display: "inline-block",
+                        }}
+                      >
+                        {toNear(prevRound.bearAmount)}
+                      </Text>
+                      /
+                      <Text
+                        weight="semibold"
+                        css={{ marginLeft: 8, display: "inline-block" }}
+                      >
+                        {toNear(prevRound.bullAmount)}
+                      </Text>
                     </Text>
                   </Grid>
                   <Grid xs={12}>
                     <Text css={{ color: "$accents8" }}>
-                      Close timestamp: {latestRounds[0].closeTimestamp}
+                      Won:{" "}
+                      <Text
+                        weight="semibold"
+                        css={{
+                          marginLeft: 4,
+                          marginRight: 8,
+                          display: "inline-block",
+                        }}
+                      >
+                        {BigInt(prevRound.closePrice) >
+                        BigInt(prevRound.lockPrice)
+                          ? "Bulls 🐂"
+                          : "Bears 🐻"}
+                      </Text>
                     </Text>
                   </Grid>
                 </Grid.Container>
               </Card.Header>
-              <Card.Body css={{ py: "$2" }}>
-                <Text>
-                  Make beautiful websites regardless of your design experience.
-                </Text>
-              </Card.Body>
               <Card.Footer></Card.Footer>
             </Card>
           )}
@@ -97,7 +145,7 @@ const Panel: FC = () => {
                   </Grid>
                   <Grid xs={12}>
                     <Text css={{ color: "$accents8" }}>
-                      Started at:{" "}
+                      Starts at:{" "}
                       <Text
                         weight="semibold"
                         css={{ marginLeft: 4, display: "inline-block" }}
@@ -130,7 +178,7 @@ const Panel: FC = () => {
                   </Grid>
                   <Grid xs={12}>
                     <Text css={{ color: "$accents8" }}>
-                      Total taked:{" "}
+                      Total staked:{" "}
                       <Text
                         weight="semibold"
                         css={{
