@@ -1372,9 +1372,14 @@ let PredictionMarket = (_dec = NearBindgen({}), _dec2 = initialize({}), _dec3 = 
     epoch,
     position
   }) {
-    assert(epoch == this.currentEpoch, "Wrong epoch");
-    assert(attachedDeposit() >= BigInt(this.minBid), "Bid is too low"); // TODO: check bid only once per round
+    const sender = predecessorAccountId();
 
+    const userRounds = this._getUserRounds(sender);
+
+    assert(epoch == this.currentEpoch, "Wrong epoch");
+    assert(attachedDeposit() >= BigInt(this.minBid), "Bid is too low");
+    assert(position != Position.None, "Position should be selected");
+    assert(!userRounds.contains(epoch), "User already participated in this round");
     const amount = attachedDeposit();
 
     let round = this._getRound(epoch);
@@ -1386,10 +1391,6 @@ let PredictionMarket = (_dec = NearBindgen({}), _dec2 = initialize({}), _dec3 = 
     } else {
       round.bullAmount = (BigInt(round.bullAmount) + amount).toString();
     }
-
-    const sender = predecessorAccountId();
-
-    const userRounds = this._getUserRounds(sender);
 
     let betInfo = this._getBetInfo(epoch, sender);
 
@@ -1690,12 +1691,14 @@ let PredictionMarket = (_dec = NearBindgen({}), _dec2 = initialize({}), _dec3 = 
 
   _getUserRounds(owner) {
     let userRounds = this.userRounds.get(owner);
+    let rounds = new UnorderedSet(owner);
 
-    if (userRounds === null) {
-      return new UnorderedSet(owner);
+    if (userRounds !== null) {
+      log(`${JSON.stringify(userRounds)}`);
+      rounds.extend(userRounds);
     }
 
-    return userRounds;
+    return rounds;
   }
 
   _getRound(epoch) {
@@ -1722,12 +1725,12 @@ let PredictionMarket = (_dec = NearBindgen({}), _dec2 = initialize({}), _dec3 = 
     this.rounds.set(epoch.toString() + owner, betInfo);
   }
 
-  _setRound(epoch, roumd) {
-    this.rounds.set(epoch.toString(), roumd);
+  _setRound(epoch, round) {
+    this.rounds.set(epoch.toString(), round);
   }
 
   _setUserRounds(owner, userRounds) {
-    this.userRounds.set(owner, userRounds);
+    this.userRounds.set(owner, userRounds.toArray());
   }
 
   _safeTransfer(receiver, amount) {

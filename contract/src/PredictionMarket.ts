@@ -86,8 +86,11 @@ class PredictionMarket {
       (near.attachedDeposit() as bigint) >= BigInt(this.minBid),
       "Bid is too low"
     );
-    assert(position == Position.None, "Wrong epoch");
-    assert(userRounds.contains(epoch), "Wrong epoch");
+    assert(position != Position.None, "Position should be selected");
+    assert(
+      !userRounds.contains(epoch),
+      "User already participated in this round"
+    );
 
     const amount: bigint = near.attachedDeposit();
     let round = this._getRound(epoch);
@@ -411,11 +414,12 @@ class PredictionMarket {
   }
 
   _getUserRounds(owner: string): UnorderedSet {
-    let userRounds = this.userRounds.get(owner);
-    if (userRounds === null) {
-      return new UnorderedSet(owner);
+    let userRounds: any = this.userRounds.get(owner);
+    let rounds = new UnorderedSet(owner);
+    if (userRounds !== null) {
+      rounds.extend(userRounds);
     }
-    return userRounds as UnorderedSet;
+    return rounds;
   }
 
   _getRound(epoch: number): Round {
@@ -470,12 +474,12 @@ class PredictionMarket {
     this.rounds.set(epoch.toString() + owner, betInfo);
   }
 
-  _setRound(epoch: number, roumd: Round): void {
-    this.rounds.set(epoch.toString(), roumd);
+  _setRound(epoch: number, round: Round): void {
+    this.rounds.set(epoch.toString(), round);
   }
 
   _setUserRounds(owner: string, userRounds: UnorderedSet): void {
-    this.userRounds.set(owner, userRounds);
+    this.userRounds.set(owner, userRounds.toArray());
   }
 
   _safeTransfer(receiver: string, amount: bigint): void {
