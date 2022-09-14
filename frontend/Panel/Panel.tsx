@@ -141,7 +141,7 @@ const Panel: FC = () => {
                           display: "inline-block",
                         }}
                       >
-                        {Number(prevRound.lockPrice) / 1_000_0}
+                        ${Number(prevRound.lockPrice) / 1_000_0}
                       </Text>
                     </Text>
                   </Grid>
