@@ -5,6 +5,8 @@ import BigNumber from "bignumber.js";
 import type { Wallet } from "./near-wallet";
 import { ChartData, getChartData } from "./chart/chart-data";
 
+BigNumber.set({ EXPONENTIAL_AT: 36 });
+
 export type IdkStateProviderProps = {
   isSignedIn: boolean;
   wallet: Wallet;
@@ -51,6 +53,8 @@ export type Snapshot = {
   state: IdkState;
   latestRounds: IdkRound[];
   chartData: ChartData;
+  userRounds: number[];
+  userBids: Record<number, any>;
 };
 
 export const [IdkStateProvider, useIdkState] = constate(
@@ -83,31 +87,59 @@ export const [IdkStateProvider, useIdkState] = constate(
       [getRound]
     );
 
+    const getUserRounds = useCallback(async (): Promise<number[]> => {
+      return await wallet.viewMethod({
+        method: "getUserRounds",
+        args: { account: wallet.accountId },
+      });
+    }, [wallet]);
+
+    const getBid = useCallback(
+      async (epoch: number): Promise<any> => {
+        return await wallet.viewMethod({
+          method: "getBid",
+          args: { epoch, account: wallet.accountId },
+        });
+      },
+      [wallet]
+    );
+
     // SNAPSHOT
 
     const [snapshot, setSnapshot] = useState<Snapshot>();
 
     useEffect(() => {
       const syncAndDefer = async () => {
-        const [{ state, latestRounds }, chartData] = await Promise.all([
-          (async () => {
-            const state = await getState();
+        const [{ state, latestRounds }, chartData, userRounds] =
+          await Promise.all([
+            (async () => {
+              const state = await getState();
 
-            const latestRounds = await Promise.all(
-              Array.from({ length: Math.min(state.currentEpoch, 16) }).map(
-                (_, i) =>
-                  i > 1
-                    ? getRound(state.currentEpoch - i)
-                    : getRoundMemo(state.currentEpoch - i)
+              const latestRounds = await Promise.all(
+                Array.from({ length: Math.min(state.currentEpoch, 16) }).map(
+                  (_, i) =>
+                    i > 1
+                      ? getRound(state.currentEpoch - i)
+                      : getRound(state.currentEpoch - i)
+                )
+              );
+
+              return { state, latestRounds };
+            })(),
+            getChartData(),
+            getUserRounds(),
+          ]);
+
+        const userBids = userRounds
+          ? Object.fromEntries(
+              await Promise.all(
+                userRounds.map(async (epoch) => [epoch, await getBid(epoch)])
               )
-            );
+            )
+          : {};
 
-            return { state, latestRounds };
-          })(),
-          getChartData(),
-        ]);
-
-        setSnapshot({ state, latestRounds, chartData });
+        setSnapshot({ state, latestRounds, chartData, userRounds, userBids });
+        console.info({ state, latestRounds, chartData, userRounds, userBids });
 
         setTimeout(syncAndDefer, 5_000);
       };
@@ -121,11 +153,15 @@ export const [IdkStateProvider, useIdkState] = constate(
       async (position: Position, amount: string) => {
         if (!snapshot) return;
 
+        if (new BigNumber(amount).isLessThanOrEqualTo(0)) {
+          throw new Error("Must be positive");
+        }
+
         return await wallet.callMethod({
           method: "bet",
           args: { epoch: snapshot.state.currentEpoch, position },
           deposit: new BigNumber(amount)
-            .times(100000000000000)
+            .times("1000000000000000000000000")
             .integerValue()
             .toString(),
         });

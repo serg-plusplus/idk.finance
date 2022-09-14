@@ -13,22 +13,27 @@ import { BetInfo, Position } from "./BetInfo";
 import { Round } from "./Round";
 import { PricesResponse } from "./Oracle";
 
+enum Bool {
+  False = 0,
+  True = 1,
+}
+
 @NearBindgen({})
 class PredictionMarket {
-  genesisLockOnce: boolean;
-  genesisStartOnce: boolean;
+  genesisLockOnce: Bool = Bool.False;
+  genesisStartOnce: Bool = Bool.False;
 
   owner: string = "admin.idk.near";
   pendingOwner: string = "";
 
-  oracle: string = "oracleprice.near";
-  oracleParams: string = JSON.stringify({ asset_ids: ["wrap.near"] });
+  oracle: string = "priceoracle.testnet";
+  oracleParams: string = JSON.stringify({ asset_ids: ["wrap.testnet"] });
   oracleGas: string = "50000000000000";
-  timeDelay: string = "1800";
-  assetId: string = "wrap.near";
+  timeDelay: string = "120000000000";
+  assetId: string = "wrap.testnet";
 
   minBid: string = "1000";
-  duration: string = "1800";
+  duration: string = "120000000000";
 
   feeRate: string = "10";
   feePrecision: string = "1000";
@@ -50,8 +55,8 @@ class PredictionMarket {
   @view({})
   getState() {
     return {
-      genesisLockOnce: this.genesisLockOnce,
-      genesisStartOnce: this.genesisStartOnce,
+      genesisLockOnce: this.genesisLockOnce ? 1 : 0,
+      genesisStartOnce: this.genesisStartOnce ? 1 : 0,
       owner: this.owner,
       pendingOwner: this.pendingOwner,
       oracle: this.oracle,
@@ -67,6 +72,16 @@ class PredictionMarket {
   @view({})
   getRound({ epoch }: { epoch: number }) {
     return this.rounds.get(epoch.toString());
+  }
+
+  @view({})
+  getUserRounds({ account }: { account: string }) {
+    return this.userRounds.get(account);
+  }
+
+  @view({})
+  getBid({ epoch, account }: { epoch: number; account: string }) {
+    return this.bids.get(epoch.toString() + account);
   }
 
   // PUBLIC
@@ -86,8 +101,11 @@ class PredictionMarket {
       (near.attachedDeposit() as bigint) >= BigInt(this.minBid),
       "Bid is too low"
     );
-    assert(position == Position.None, "Wrong epoch");
-    assert(userRounds.contains(epoch), "Wrong epoch");
+    assert(position != Position.None, "Position should be selected");
+    assert(
+      !userRounds.contains(epoch),
+      "User already participated in this round"
+    );
 
     const amount: bigint = near.attachedDeposit();
     let round = this._getRound(epoch);
@@ -103,6 +121,7 @@ class PredictionMarket {
     betInfo.amount = amount.toString();
     userRounds.set(epoch);
 
+    this._setRound(epoch, round);
     this._setBetInfo(epoch, sender, betInfo);
     this._setUserRounds(sender, userRounds);
 
@@ -150,13 +169,13 @@ class PredictionMarket {
    * @notice Request price and rounds updates
    */
   @call({})
-  reveal({}: {}): void {
+  reveal({}: {}): NearPromise {
     assert(
-      this.genesisLockOnce && this.genesisStartOnce,
+      this.genesisLockOnce === Bool.True && this.genesisStartOnce === Bool.True,
       "Genesis rounds aren't finished"
     );
 
-    this._requestPrice(this.currentEpoch, "_revealCallback");
+    return this._requestPrice(this.currentEpoch, "_revealCallback");
   }
 
   /**
@@ -181,22 +200,22 @@ class PredictionMarket {
    */
   @call({})
   genesisStartRound({}: {}): void {
-    assert(!this.genesisStartOnce, "Genesis round is started");
+    assert(this.genesisStartOnce == Bool.False, "Genesis round is started");
 
     this.currentEpoch += 1;
     this._startRound(this.currentEpoch);
-    this.genesisStartOnce = true;
+    this.genesisStartOnce = Bool.True;
   }
 
   /**
    * @notice Request price and management of first 2 rounds
    */
   @call({})
-  genesisLockRound({}: {}): void {
-    assert(this.genesisStartOnce, "Genesis round is not started");
-    assert(!this.genesisLockOnce, "Genesis round is locked");
+  genesisLockRound({}: {}): NearPromise {
+    assert(this.genesisStartOnce === Bool.True, "Genesis round is not started");
+    assert(this.genesisLockOnce === Bool.False, "Genesis round is locked");
 
-    this._requestPrice(this.currentEpoch, "_genesisLockRoundCallback");
+    return this._requestPrice(this.currentEpoch, "_genesisLockRoundCallback");
   }
 
   /**
@@ -212,7 +231,7 @@ class PredictionMarket {
 
     this.currentEpoch += 1;
     this._startRound(this.currentEpoch);
-    this.genesisLockOnce = true;
+    this.genesisLockOnce = Bool.True;
   }
 
   // ADMIN
@@ -357,7 +376,7 @@ class PredictionMarket {
   _safeStartRound(epoch: number): void {
     let oldRound = this._getRound(epoch - 2);
 
-    assert(this.genesisStartOnce, "Init game first");
+    assert(this.genesisStartOnce === Bool.True, "Init game first");
     assert(
       BigInt(oldRound.closeTimestamp) != BigInt(0),
       "Round n-2 is not ended"
@@ -403,7 +422,7 @@ class PredictionMarket {
   }
 
   _getBetInfo(epoch: number, owner: string): BetInfo {
-    let betInfo: any = this.rounds.get(epoch.toString() + owner);
+    let betInfo: any = this.bids.get(epoch.toString() + owner);
     if (betInfo === null) {
       return new BetInfo(Position.None, "0", false);
     }
@@ -411,11 +430,12 @@ class PredictionMarket {
   }
 
   _getUserRounds(owner: string): UnorderedSet {
-    let userRounds = this.userRounds.get(owner);
-    if (userRounds === null) {
-      return new UnorderedSet(owner);
+    let userRounds: any = this.userRounds.get(owner);
+    let rounds = new UnorderedSet(owner);
+    if (userRounds !== null) {
+      rounds.extend(userRounds);
     }
-    return userRounds as UnorderedSet;
+    return rounds;
   }
 
   _getRound(epoch: number): Round {
@@ -467,15 +487,15 @@ class PredictionMarket {
   }
 
   _setBetInfo(epoch: number, owner: string, betInfo: BetInfo): void {
-    this.rounds.set(epoch.toString() + owner, betInfo);
+    this.bids.set(epoch.toString() + owner, betInfo);
   }
 
-  _setRound(epoch: number, roumd: Round): void {
-    this.rounds.set(epoch.toString(), roumd);
+  _setRound(epoch: number, round: Round): void {
+    this.rounds.set(epoch.toString(), round);
   }
 
   _setUserRounds(owner: string, userRounds: UnorderedSet): void {
-    this.userRounds.set(owner, userRounds);
+    this.userRounds.set(owner, userRounds.toArray());
   }
 
   _safeTransfer(receiver: string, amount: bigint): void {
