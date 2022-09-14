@@ -24,32 +24,38 @@ const Panel: FC = () => {
 
   const sortedBidKeys = userRounds ? userRounds.sort((a, b) => b - a) : [];
 
-  const handleBetSubmit = useCallback((evt) => {
-    evt.preventDefault();
+  const handleBetSubmit = useCallback(
+    (evt) => {
+      evt.preventDefault();
 
-    const amount = evt.target.elements.amount.value;
-    const position = evt.target.elements.position.value;
+      const amount = evt.target.elements.amount.value;
+      const position = evt.target.elements.position.value;
 
-    if (!amount) return;
+      if (!amount) return;
 
-    bet(position, amount)
-      .then(() => alert("Success!"))
-      .catch((err) => {
-        console.error(err);
-        alert(err.message);
-      });
-  }, []);
+      bet(position, amount)
+        .then(() => alert("Success!"))
+        .catch((err) => {
+          console.error(err);
+          alert(err.message);
+        });
+    },
+    [bet]
+  );
 
-  const handleClaimSubmit = useCallback((epoch) => {
-    if (!epoch) return;
+  const handleClaimSubmit = useCallback(
+    (epoch) => {
+      if (!epoch) return;
 
-    claim([epoch])
-      .then(() => alert("Successfully claimed!"))
-      .catch((err) => {
-        console.error(err);
-        alert(err.message);
-      });
-  }, []);
+      claim([epoch])
+        .then(() => alert("Successfully claimed!"))
+        .catch((err) => {
+          console.error(err);
+          alert(err.message);
+        });
+    },
+    [claim]
+  );
 
   if (!state || !latestRounds?.length) return null;
 
@@ -273,7 +279,7 @@ const Panel: FC = () => {
         </Grid>
         <Grid xs={4}>
           <Card css={{ p: "$6", marginTop: 16 }}>
-            <form onSubmit={handleBetSubmit}>
+            <form onSubmit={() => null}>
               <Card.Header>
                 <Text h2 css={{ lineHeight: "$xs" }}>
                   My bets
