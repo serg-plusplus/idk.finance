@@ -62,30 +62,23 @@ schedule(3_000, async () => {
     });
     return;
   } else if (!state.genesisLockOnce) {
-    await contract.genesisLockOnce({
+    await contract.genesisLockRound({
       args: {},
       gas: "300000000000000", // attached GAS (optional)
     });
     return;
   } else {
     const round = await contract.getRound({
-      args: { epoch: state.currentEpoch },
+      epoch: state.currentEpoch,
     });
 
-    if (new Date(round.lockTimestamp) < new Date()) {
+    if (new Date(round.lockTimestamp / 1_000_000) < new Date()) {
       await contract.reveal({
         args: {},
         gas: "300000000000000", // attached GAS (optional)
       });
     }
   }
-
-  const result = await contract.genesisStartRound({
-    args: {},
-    gas: "300000000000000", // attached GAS (optional)
-  });
-
-  console.info({ result });
 });
 
 async function schedule(notMoreOftenThan, factory) {

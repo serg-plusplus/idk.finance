@@ -100,7 +100,7 @@ export const [IdkStateProvider, useIdkState] = constate(
                 (_, i) =>
                   i > 1
                     ? getRound(state.currentEpoch - i)
-                    : getRoundMemo(state.currentEpoch - i)
+                    : getRound(state.currentEpoch - i)
               )
             );
 

@@ -164,13 +164,13 @@ class PredictionMarket {
    * @notice Request price and rounds updates
    */
   @call({})
-  reveal({}: {}): void {
+  reveal({}: {}): NearPromise {
     assert(
       this.genesisLockOnce === Bool.True && this.genesisStartOnce === Bool.True,
       "Genesis rounds aren't finished"
     );
 
-    this._requestPrice(this.currentEpoch, "_revealCallback");
+    return this._requestPrice(this.currentEpoch, "_revealCallback");
   }
 
   /**
