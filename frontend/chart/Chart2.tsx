@@ -21,9 +21,9 @@ const brushMargin = {top: 10, bottom: 15, left: 50, right: 20};
 const chartSeparation = 30;
 const PATTERN_ID = 'brush_pattern';
 const GRADIENT_ID = 'brush_gradient';
-export const accentColor = '#f6acc8';
-export const background = '#584153';
-export const background2 = '#af8baf';
+export const accentColor = '#56c36c';
+export const background = '#003271';
+export const background2 = '#06B7DB';
 const selectedBrushStyle = {
   fill: `url(#${PATTERN_ID})`,
   stroke: 'white',
