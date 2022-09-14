@@ -55,7 +55,8 @@
     "next-themes": "^0.2.1",
     "react": "^18.1.0",
     "react-dom": "^18.1.0",
-    "regenerator-runtime": "^0.13.9"
+    "regenerator-runtime": "^0.13.9",
+    "timeago.js": "^4.0.2"
   },
   "resolutions": {
     "@babel/preset-env": "7.13.8"
