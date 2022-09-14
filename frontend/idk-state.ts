@@ -5,6 +5,8 @@ import BigNumber from "bignumber.js";
 import type { Wallet } from "./near-wallet";
 import { ChartData, getChartData } from "./chart/chart-data";
 
+BigNumber.set({ EXPONENTIAL_AT: 36 });
+
 export type IdkStateProviderProps = {
   isSignedIn: boolean;
   wallet: Wallet;
@@ -121,11 +123,15 @@ export const [IdkStateProvider, useIdkState] = constate(
       async (position: Position, amount: string) => {
         if (!snapshot) return;
 
+        if (new BigNumber(amount).isLessThanOrEqualTo(0)) {
+          throw new Error("Must be positive");
+        }
+
         return await wallet.callMethod({
           method: "bet",
           args: { epoch: snapshot.state.currentEpoch, position },
           deposit: new BigNumber(amount)
-            .times(100000000000000)
+            .times("1000000000000000000000000")
             .integerValue()
             .toString(),
         });

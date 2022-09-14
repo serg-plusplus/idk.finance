@@ -13,22 +13,27 @@ import { BetInfo, Position } from "./BetInfo";
 import { Round } from "./Round";
 import { PricesResponse } from "./Oracle";
 
+enum Bool {
+  False = 0,
+  True = 1,
+}
+
 @NearBindgen({})
 class PredictionMarket {
-  genesisLockOnce: boolean;
-  genesisStartOnce: boolean;
+  genesisLockOnce: Bool = Bool.False;
+  genesisStartOnce: Bool = Bool.False;
 
   owner: string = "admin.idk.near";
   pendingOwner: string = "";
 
-  oracle: string = "oracleprice.near";
+  oracle: string = "priceoracle.testnet";
   oracleParams: string = JSON.stringify({ asset_ids: ["wrap.near"] });
   oracleGas: string = "50000000000000";
-  timeDelay: string = "1800";
+  timeDelay: string = "1800000000000";
   assetId: string = "wrap.near";
 
   minBid: string = "1000";
-  duration: string = "1800";
+  duration: string = "1800000000000";
 
   feeRate: string = "10";
   feePrecision: string = "1000";
@@ -39,7 +44,6 @@ class PredictionMarket {
   bids: LookupMap = new LookupMap("b");
   rounds: LookupMap = new LookupMap("r");
   userRounds: LookupMap = new LookupMap("u");
-  prices: LookupMap = new LookupMap("p");
 
   @initialize({})
   init({ owner, manager }: { owner: string; manager: string }) {
@@ -70,17 +74,33 @@ class PredictionMarket {
     return this.rounds.get(epoch.toString());
   }
 
+  @view({})
+  getUserRounds({ account }: { account: string }) {
+    return this.userRounds.get(account);
+  }
+
   // PUBLIC
 
+  /**
+   * @notice Make the bet on the price move
+   * @param epoch: epoch on each the user want to participate; must be current epoch
+   * @param position: bullish or bearish
+   */
   @call({ payableFunction: true })
   bet({ epoch, position }: { epoch: number; position: Position }): void {
+    const sender = near.predecessorAccountId();
+    const userRounds = this._getUserRounds(sender);
+
     assert(epoch == this.currentEpoch, "Wrong epoch");
-    // check bettable round
     assert(
       (near.attachedDeposit() as bigint) >= BigInt(this.minBid),
       "Bid is too low"
     );
-    // check bid only once per round
+    assert(position != Position.None, "Position should be selected");
+    assert(
+      !userRounds.contains(epoch),
+      "User already participated in this round"
+    );
 
     const amount: bigint = near.attachedDeposit();
     let round = this._getRound(epoch);
@@ -91,19 +111,22 @@ class PredictionMarket {
       round.bullAmount = (BigInt(round.bullAmount) + amount).toString();
     }
 
-    const sender = near.predecessorAccountId();
-    const userRounds = this._getUserRounds(sender);
     let betInfo = this._getBetInfo(epoch, sender);
     betInfo.position = position;
-    betInfo.amount = amount;
+    betInfo.amount = amount.toString();
     userRounds.set(epoch);
 
+    this._setRound(epoch, round);
     this._setBetInfo(epoch, sender, betInfo);
     this._setUserRounds(sender, userRounds);
 
     near.log(`${sender} bids in the ${epoch} epoch. Amount is ${amount}`);
   }
 
+  /**
+   * @notice Claim rewards for the successful bids
+   * @param epochs: epochs in which the user has unclaimed rewards
+   */
   @call({})
   claim({ epochs }: { epochs: number[] }): void {
     let reward = BigInt(0);
@@ -118,13 +141,12 @@ class PredictionMarket {
         "Round isn't ended"
       );
       assert(round.oracleCalled, "Oracle isn't called");
-      assert(this.claimable(epoch, sender), "Not eligible");
+      assert(this.claimable(epoch, sender), "Claim is not eligible");
 
       let betInfo = this._getBetInfo(epoch, sender);
       const epochReward =
-        (betInfo.amount * BigInt(round.rewardAmount)) /
+        (BigInt(betInfo.amount) * BigInt(round.rewardAmount)) /
         BigInt(round.rewardBaseCalAmount);
-
       reward += epochReward;
       betInfo.claimed = true;
 
@@ -138,16 +160,23 @@ class PredictionMarket {
     }
   }
 
+  /**
+   * @notice Request price and rounds updates
+   */
   @call({})
   reveal({}: {}): void {
     assert(
-      this.genesisLockOnce && this.genesisStartOnce,
+      this.genesisLockOnce === Bool.True && this.genesisStartOnce === Bool.True,
       "Genesis rounds aren't finished"
     );
 
     this._requestPrice(this.currentEpoch, "_revealCallback");
   }
 
+  /**
+   * @notice Start new round, lock previous and end the one before
+   * @param epoch: epoch on each the price is updated; must be current epoch
+   */
   @call({ privateFunction: true })
   _revealCallback({ epoch }: { epoch: number }): void {
     assert(epoch == this.currentEpoch, "Epoch is wrong");
@@ -161,23 +190,33 @@ class PredictionMarket {
     this._safeStartRound(this.currentEpoch);
   }
 
+  /**
+   * @notice Start the first round
+   */
   @call({})
   genesisStartRound({}: {}): void {
-    assert(!this.genesisStartOnce, "Genesis round is started");
+    assert(this.genesisStartOnce == Bool.False, "Genesis round is started");
 
     this.currentEpoch += 1;
     this._startRound(this.currentEpoch);
-    this.genesisStartOnce = true;
+    this.genesisStartOnce = Bool.True;
   }
 
+  /**
+   * @notice Request price and management of first 2 rounds
+   */
   @call({})
-  genesisLockRound({}: {}): void {
-    assert(this.genesisStartOnce, "Genesis round is not started");
-    assert(!this.genesisLockOnce, "Genesis round is locked");
+  genesisLockRound({}: {}): NearPromise {
+    assert(this.genesisStartOnce === Bool.True, "Genesis round is not started");
+    assert(this.genesisLockOnce === Bool.False, "Genesis round is locked");
 
-    this._requestPrice(this.currentEpoch, "_genesisLockRoundCallback");
+    return this._requestPrice(this.currentEpoch, "_genesisLockRoundCallback");
   }
 
+  /**
+   * @notice Start second round and lock first round
+   * @param epoch: epoch on each the price is updated; must be current epoch
+   */
   @call({ privateFunction: true })
   _genesisLockRoundCallback({ epoch }: { epoch: number }): void {
     assert(epoch == this.currentEpoch, "Epoch is wrong");
@@ -187,7 +226,7 @@ class PredictionMarket {
 
     this.currentEpoch += 1;
     this._startRound(this.currentEpoch);
-    this.genesisLockOnce = true;
+    this.genesisLockOnce = Bool.True;
   }
 
   // ADMIN
@@ -235,6 +274,10 @@ class PredictionMarket {
 
   // INTERNAL
 
+  /**
+   * @notice Calculate round results and rewards
+   * @param epoch: epoch on which the rewards are calculated
+   */
   _calculateRewards(epoch: number): void {
     let round = this._getRound(epoch);
 
@@ -269,6 +312,11 @@ class PredictionMarket {
     near.log(`Rewards for ${epoch} round calculated`);
   }
 
+  /**
+   * @notice Lock round i.e. stop accepting the bids for the round
+   * @param epoch: what epoch is to be locked
+   * @param price: asset's price at the epoch lock
+   */
   _safeLockRound(epoch: number, price: bigint): void {
     let round = this._getRound(epoch);
 
@@ -291,6 +339,11 @@ class PredictionMarket {
     near.log(`The round ${epoch} locked`);
   }
 
+  /**
+   * @notice End round and make available for rewards distribution
+   * @param epoch: what epoch is to be locked
+   * @param price: asset's price at which the epoch is closed
+   */
   _safeEndRound(epoch: number, price: bigint): void {
     let round = this._getRound(epoch);
 
@@ -311,10 +364,14 @@ class PredictionMarket {
     near.log(`The round ${epoch} closed`);
   }
 
+  /**
+   * @notice Check all constraints and start new round
+   * @param epoch: new epoch
+   */
   _safeStartRound(epoch: number): void {
     let oldRound = this._getRound(epoch - 2);
 
-    assert(this.genesisStartOnce, "Init game first");
+    assert(this.genesisStartOnce === Bool.True, "Init game first");
     assert(
       BigInt(oldRound.closeTimestamp) != BigInt(0),
       "Round n-2 is not ended"
@@ -327,6 +384,10 @@ class PredictionMarket {
     this._startRound(epoch);
   }
 
+  /**
+   * @notice Start new round
+   * @param epoch: new epoch
+   */
   _startRound(epoch: number): void {
     let round = new Round(
       epoch.toFixed(),
@@ -343,7 +404,7 @@ class PredictionMarket {
       false
     );
     this._setRound(epoch, round);
-    near.log(`The roumd ${epoch} started`);
+    near.log(`The round ${epoch} started`);
   }
 
   // HELPERS
@@ -356,19 +417,20 @@ class PredictionMarket {
   }
 
   _getBetInfo(epoch: number, owner: string): BetInfo {
-    let betInfo: any = this.rounds.get(epoch.toString() + owner);
+    let betInfo: any = this.bids.get(epoch.toString() + owner);
     if (betInfo === null) {
-      return new BetInfo(Position.None, BigInt(0), false);
+      return new BetInfo(Position.None, "0", false);
     }
     return new BetInfo(betInfo.position, betInfo.amount, betInfo.claimed);
   }
 
   _getUserRounds(owner: string): UnorderedSet {
-    let userRounds = this.userRounds.get(owner);
-    if (userRounds === null) {
-      return new UnorderedSet(owner);
+    let userRounds: any = this.userRounds.get(owner);
+    let rounds = new UnorderedSet(owner);
+    if (userRounds !== null) {
+      rounds.extend(userRounds);
     }
-    return userRounds as UnorderedSet;
+    return rounds;
   }
 
   _getRound(epoch: number): Round {
@@ -420,15 +482,15 @@ class PredictionMarket {
   }
 
   _setBetInfo(epoch: number, owner: string, betInfo: BetInfo): void {
-    this.rounds.set(epoch.toString() + owner, betInfo);
+    this.bids.set(epoch.toString() + owner, betInfo);
   }
 
-  _setRound(epoch: number, roumd: Round): void {
-    this.rounds.set(epoch.toString(), roumd);
+  _setRound(epoch: number, round: Round): void {
+    this.rounds.set(epoch.toString(), round);
   }
 
   _setUserRounds(owner: string, userRounds: UnorderedSet): void {
-    this.userRounds.set(owner, userRounds);
+    this.userRounds.set(owner, userRounds.toArray());
   }
 
   _safeTransfer(receiver: string, amount: bigint): void {
@@ -446,7 +508,7 @@ class PredictionMarket {
     }
     return (
       round.oracleCalled &&
-      betInfo.amount != BigInt(0) &&
+      BigInt(betInfo.amount) != BigInt(0) &&
       !betInfo.claimed &&
       ((BigInt(round.closePrice) > BigInt(round.lockPrice) &&
         betInfo.position == Position.Bullish) ||

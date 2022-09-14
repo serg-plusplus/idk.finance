@@ -1,79 +1,45 @@
 import "regenerator-runtime/runtime";
-import {FC, useEffect, useState} from "react";
-import {Container} from "@nextui-org/react";
+import { FC } from "react";
+import { Container, Card, Grid, Text, Link } from "@nextui-org/react";
 
 import "./assets/global.css";
 
 import { SignInPrompt } from "./ui-components";
 import Chart from "./chart/Chart2";
-import { ChartData, getChartData } from "./chart/chart-data";
 import { useIdkState } from "./idk-state";
 import Header from "./Header/Header";
+import Panel from "./Panel/Panel";
 
 const App: FC = () => {
-  const { isSignedIn, wallet, getState } = useIdkState();
+  const { isSignedIn, wallet, chartData, state, latestRounds } = useIdkState();
 
-  const [valueFromBlockchain, setValueFromBlockchain] = useState();
-  const [uiPleaseWait, setUiPleaseWait] = useState(false);
-  const [coingeckoData, setCoingeckoData] = useState<ChartData>({
-    prices: [],
-  });
-
-  // Get blockchian state once on component load
-  useEffect(() => {
-    getState().then(console.info).catch(console.error);
-    // getState
-    //   .then(setValueFromBlockchain)
-    //   .catch(alert)
-    //   .finally(() => {
-    //     setUiPleaseWait(false);
-    //   });
-
-    getChartData().then(setCoingeckoData);
-  }, []);
+  let content;
 
   /// If user not signed-in with wallet - show prompt
   if (!isSignedIn) {
     // Sign-in flow will reload the page later
-    return (
-      <>
-        <SignInPrompt
-          greeting={valueFromBlockchain}
-          onClick={() => wallet.signIn()}
-        />
-      </>
-    );
-  }
+    content = <SignInPrompt onClick={() => wallet.signIn()} />;
+  } else if (chartData) {
+    content = (
+      <main>
+        <Container display="flex" justify="center" css={{ mw: "1248px" }}>
+          {chartData.prices.length && (
+            <Chart stock={chartData} width={1200} height={400} />
+          )}
 
-  function changeGreeting(e) {
-    e.preventDefault();
-    setUiPleaseWait(true);
-    const { greetingInput } = e.target.elements;
-    // contract
-    //   .setGreeting(greetingInput.value)
-    //   .then(async () => {
-    //     return contract.getGreeting();
-    //   })
-    //   .then(setValueFromBlockchain)
-    //   .finally(() => {
-    //     setUiPleaseWait(false);
-    //   });
+          <Panel />
+        </Container>
+      </main>
+    );
+  } else {
+    content = null;
   }
 
   return (
     <>
-      <Header/>
-      <main className={uiPleaseWait ? "please-wait" : "main-trade"}>
-        <Container display="flex" justify="center">
-          {coingeckoData.prices.length && (
-            <Chart
-              stock={coingeckoData}
-              width={1200}
-              height={400}
-            />
-          )}
-        </Container>
-      </main>
+      <Header isSignedIn={isSignedIn} />
+      <div style={{ paddingTop: 100 }} />
+      {content}
     </>
   );
 };
