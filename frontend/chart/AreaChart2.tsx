@@ -131,14 +131,14 @@ const AreaChart2: FC<any> = ({
               y={0}
               width={barWidth}
               height={barHeight}
-              fill="blue"
+              fill="#56C36CFF"
             />
             <circle
               key={`marker-circle${d.time}`}
               r={3}
               cx={xScale(d.time)}
               cy={yScale(d.price)}
-              fill="blue"
+              fill="#56C36CFF"
             />
             {/*<MarkerCircle id={`marker-circle${d.end}`} fill="blue" size={2} refX={barX} />*/}
           </Fragment>
