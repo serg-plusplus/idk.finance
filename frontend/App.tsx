@@ -34,7 +34,7 @@ const App: FC = () => {
       ? [
         ...chartData.prices.map((el) => ({time: el[0], price: el[1]})),
         ...finalLatestRounds,
-      ].sort((a, b) => a.time - b.time)
+      ].sort((a, b) => a.time - b.time).slice(-200)
       : []
     ), [chartData, finalLatestRounds])
 
