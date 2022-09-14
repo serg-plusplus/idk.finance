@@ -1,4 +1,4 @@
-import {useRef, useState, useMemo, FC, useCallback} from 'react';
+import {useRef, useState, useMemo, FC, useCallback, useEffect} from 'react';
 import {min, max, extent} from 'd3-array';
 import { timeFormat } from "d3-time-format";
 import {Card} from "@nextui-org/react";
@@ -54,18 +54,24 @@ const rounds = [
     start: 1663109779000,
     value: 4.427542874635345,
     roundNumber: 2,
+    totalPrice: 123.4321,
+    priceChange: 4.56,
   },
   {
     end: 1663111579000,
     start: 1663109779000,
     value: 4.434234770282088,
     roundNumber: 1,
+    totalPrice: 123.4321,
+    priceChange: -2.14,
   },
   {
     end: 1663109779000,
     start: 1663109779000,
     value: 4.451723886361865,
     roundNumber: 0,
+    totalPrice: 123.4321,
+    priceChange: 8.49,
   },
 ]
 
@@ -88,8 +94,17 @@ const BrushChart: FC = withTooltip<BrushProps, TooltipData>(({
   const state = useIdkState();
   console.log('state', state)
   const brushRef = useRef<BaseBrush | null>(null);
+  // const [savedIndexes, setSavedIndexes] = useState({from: 40, to: null});
 
   const [filteredStock, setFilteredStock] = useState(stock.prices.slice(-40));
+
+  // useEffect(() => {
+  //   if (savedIndexes.to === null) {
+  //     setFilteredStock(stock.prices.slice(-savedIndexes.from))
+  //   } else {
+  //     setFilteredStock(stock.prices.slice(savedIndexes.from, savedIndexes.to))
+  //   }
+  // }, [stock.prices.slice, savedIndexes])
 
   const filteredDataRounds = useMemo(() => rounds.map(round => {
     if (round.end >= filteredStock[0][0] && round.end <= filteredStock[filteredStock.length - 1][0]) {
@@ -101,11 +116,25 @@ const BrushChart: FC = withTooltip<BrushProps, TooltipData>(({
   const onBrushChange = useCallback((domain: Bounds | null) => {
     if (!domain) return;
     const {x0, x1, y0, y1} = domain;
-    const stockCopy = stock.prices.filter((s) => {
+    // let isSaved = false;
+    // let firstIndex = 0;
+    // let lastIndex = stock.prices.length - 1;
+    const stockCopy = stock.prices.filter((s, index) => {
       const x = getDate(s).getTime();
       const y = getStockValue(s);
-      return x > x0 && x < x1 && y > y0 && y < y1;
+      if (x > x0 && x < x1 && y > y0 && y < y1) {
+        // if(!isSaved) {
+        //   firstIndex = index;
+        //   isSaved = true
+        // }
+        // lastIndex = index;
+
+        return true;
+      } else {
+        return false;
+      }
     });
+    // setSavedIndexes(prevState => ({from: firstIndex, to: prevState.from === null ? null : lastIndex}))
     setFilteredStock(stockCopy);
   }, [stock.prices]);
 
@@ -260,7 +289,8 @@ const BrushChart: FC = withTooltip<BrushProps, TooltipData>(({
                 textAlign: "center",
                 transform: "translateX(-50%)",
                 top: topChartHeight + margin.top,
-                left: 50 + dateScale(d.end)
+                left: 50 + dateScale(d.end),
+                backgroundColor: "rgba(255,255,255,.75)",
               }}
             >
               #{d.roundNumber}
