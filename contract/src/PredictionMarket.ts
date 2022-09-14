@@ -103,7 +103,7 @@ class PredictionMarket {
     );
     assert(position != Position.None, "Position should be selected");
     assert(
-      !userRounds.contains(epoch),
+      !userRounds.includes(epoch),
       "User already participated in this round"
     );
 
@@ -119,7 +119,7 @@ class PredictionMarket {
     let betInfo = this._getBetInfo(epoch, sender);
     betInfo.position = position;
     betInfo.amount = amount.toString();
-    userRounds.set(epoch);
+    userRounds.push(epoch);
 
     this._setRound(epoch, round);
     this._setBetInfo(epoch, sender, betInfo);
@@ -429,13 +429,14 @@ class PredictionMarket {
     return new BetInfo(betInfo.position, betInfo.amount, betInfo.claimed);
   }
 
-  _getUserRounds(owner: string): UnorderedSet {
+  _getUserRounds(owner: string): Array<number> {
     let userRounds: any = this.userRounds.get(owner);
-    let rounds = new UnorderedSet(owner);
+
     if (userRounds !== null) {
-      rounds.extend(userRounds);
+      return userRounds;
     }
-    return rounds;
+
+    return [];
   }
 
   _getRound(epoch: number): Round {
@@ -494,8 +495,8 @@ class PredictionMarket {
     this.rounds.set(epoch.toString(), round);
   }
 
-  _setUserRounds(owner: string, userRounds: UnorderedSet): void {
-    this.userRounds.set(owner, userRounds.toArray());
+  _setUserRounds(owner: string, userRounds: Array<number>): void {
+    this.userRounds.set(owner, userRounds);
   }
 
   _safeTransfer(receiver: string, amount: bigint): void {

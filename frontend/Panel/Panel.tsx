@@ -14,11 +14,15 @@ import {
   Link,
   Input,
   Radio,
+  Checkbox,
 } from "@nextui-org/react";
 import { useIdkState } from "../idk-state";
 
 const Panel: FC = () => {
-  const { state, latestRounds, bet, userBids } = useIdkState();
+  const { state, latestRounds, bet, claim, userBids, userRounds } =
+    useIdkState();
+
+  const sortedBidKeys = userRounds ? userRounds.sort((a, b) => b - a) : [];
 
   const handleBetSubmit = useCallback((evt) => {
     evt.preventDefault();
@@ -30,6 +34,17 @@ const Panel: FC = () => {
 
     bet(position, amount)
       .then(() => alert("Success!"))
+      .catch((err) => {
+        console.error(err);
+        alert(err.message);
+      });
+  }, []);
+
+  const handleClaimSubmit = useCallback((epoch) => {
+    if (!epoch) return;
+
+    claim([epoch])
+      .then(() => alert("Successfully claimed!"))
       .catch((err) => {
         console.error(err);
         alert(err.message);
@@ -263,7 +278,62 @@ const Panel: FC = () => {
                   My bets
                 </Text>
               </Card.Header>
-              <Card.Body css={{ py: "$2" }}></Card.Body>
+              <Card.Body css={{ py: "$2" }}>
+                {sortedBidKeys.map((key) => (
+                  <React.Fragment key={key}>
+                    <Grid xs={12}>
+                      <Text css={{ color: "$accents8" }}>Round #{key}</Text>
+                      <Text
+                        weight="semibold"
+                        css={{
+                          marginLeft: 24,
+                          marginRight: 8,
+                          display: "inline-block",
+                        }}
+                      >
+                        {userBids![key].position === "2" ? "🐂" : "🐻"}
+                      </Text>
+
+                      <Text
+                        weight="semibold"
+                        css={{
+                          marginLeft: 0,
+                          marginRight: 8,
+                          color: userBids![key].hasWon
+                            ? "$green700"
+                            : "$red800",
+                          display: "inline-block",
+                        }}
+                      >
+                        {toNear(userBids![key].amount)} NEAR
+                      </Text>
+
+                      {userBids![key].claimed ? (
+                        <Checkbox
+                          isDisabled={true}
+                          defaultSelected={true}
+                          size="xs"
+                        >
+                          Claimed
+                        </Checkbox>
+                      ) : (
+                        userBids![key].hasWon && (
+                          <Button
+                            size="xs"
+                            rounded
+                            bordered
+                            color="gradient"
+                            css={{ marginLeft: 4 }}
+                            onClick={() => handleClaimSubmit(key)}
+                          >
+                            Claim
+                          </Button>
+                        )
+                      )}
+                    </Grid>
+                  </React.Fragment>
+                ))}
+              </Card.Body>
               <Card.Footer css={{ marginTop: 16 }}></Card.Footer>
             </form>
           </Card>
