@@ -13,7 +13,21 @@ import Panel from "./Panel/Panel";
 const App: FC = () => {
   const { isSignedIn, wallet, chartData, latestRounds } = useIdkState();
 
-  const finalLatestRounds = useMemo(() => latestRounds ? latestRounds.filter(el => el.lockPrice !== '0').map((el) => ({time: +(+el.lockTimestamp/1e6).toFixed(), price: +el.lockPrice/1e4, ...el})) : [], [latestRounds])
+  const finalLatestRounds = useMemo(() => latestRounds ? latestRounds.map((el, index) => {
+    if (el.lockPrice !== '0' && latestRounds[index + 1]) {
+      const prevElement = latestRounds[index + 1];
+      return ({
+        time: +(+el.lockTimestamp / 1e6).toFixed(),
+        price: +el.lockPrice / 1e4,
+        diff: +prevElement.lockPrice * 100 / +prevElement.closePrice,
+        totalAmount: prevElement.totalAmount,
+        rewardAmount: prevElement.rewardAmount,
+        ...el,
+      })
+    } else {
+      return null;
+    }
+  }).filter(el => el !== null) : [], [latestRounds])
 
   const finalChartData = useMemo(() => (
     chartData && chartData.prices.length
