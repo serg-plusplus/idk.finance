@@ -78,12 +78,16 @@ class PredictionMarket {
    */
   @call({ payableFunction: true })
   bet({ epoch, position }: { epoch: number; position: Position }): void {
+    const sender = near.predecessorAccountId();
+    const userRounds = this._getUserRounds(sender);
+
     assert(epoch == this.currentEpoch, "Wrong epoch");
     assert(
       (near.attachedDeposit() as bigint) >= BigInt(this.minBid),
       "Bid is too low"
     );
-    // TODO: check bid only once per round
+    assert(position == Position.None, "Wrong epoch");
+    assert(userRounds.contains(epoch), "Wrong epoch");
 
     const amount: bigint = near.attachedDeposit();
     let round = this._getRound(epoch);
@@ -94,11 +98,9 @@ class PredictionMarket {
       round.bullAmount = (BigInt(round.bullAmount) + amount).toString();
     }
 
-    const sender = near.predecessorAccountId();
-    const userRounds = this._getUserRounds(sender);
     let betInfo = this._getBetInfo(epoch, sender);
     betInfo.position = position;
-    betInfo.amount = amount;
+    betInfo.amount = amount.toString();
     userRounds.set(epoch);
 
     this._setBetInfo(epoch, sender, betInfo);
@@ -129,7 +131,7 @@ class PredictionMarket {
 
       let betInfo = this._getBetInfo(epoch, sender);
       const epochReward =
-        (betInfo.amount * BigInt(round.rewardAmount)) /
+        (BigInt(betInfo.amount) * BigInt(round.rewardAmount)) /
         BigInt(round.rewardBaseCalAmount);
       reward += epochReward;
       betInfo.claimed = true;
@@ -403,7 +405,7 @@ class PredictionMarket {
   _getBetInfo(epoch: number, owner: string): BetInfo {
     let betInfo: any = this.rounds.get(epoch.toString() + owner);
     if (betInfo === null) {
-      return new BetInfo(Position.None, BigInt(0), false);
+      return new BetInfo(Position.None, "0", false);
     }
     return new BetInfo(betInfo.position, betInfo.amount, betInfo.claimed);
   }
@@ -491,7 +493,7 @@ class PredictionMarket {
     }
     return (
       round.oracleCalled &&
-      betInfo.amount != BigInt(0) &&
+      BigInt(betInfo.amount) != BigInt(0) &&
       !betInfo.claimed &&
       ((BigInt(round.closePrice) > BigInt(round.lockPrice) &&
         betInfo.position == Position.Bullish) ||
