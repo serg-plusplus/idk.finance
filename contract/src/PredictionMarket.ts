@@ -79,6 +79,11 @@ class PredictionMarket {
     return this.userRounds.get(account);
   }
 
+  @view({})
+  getBid({ epoch, account }: { epoch: number; account: string }) {
+    return this.bids.get(epoch.toString() + account);
+  }
+
   // PUBLIC
 
   /**

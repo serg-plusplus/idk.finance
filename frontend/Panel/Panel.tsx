@@ -207,7 +207,19 @@ const Panel: FC = () => {
             </form>
           </Card>
         </Grid>
-        <Grid xs={4}></Grid>
+        <Grid xs={4}>
+          <Card css={{ p: "$6", marginTop: 16 }}>
+            <form onSubmit={handleBetSubmit}>
+              <Card.Header>
+                <Text h2 css={{ lineHeight: "$xs" }}>
+                  My bets
+                </Text>
+              </Card.Header>
+              <Card.Body css={{ py: "$2" }}></Card.Body>
+              <Card.Footer css={{ marginTop: 16 }}></Card.Footer>
+            </form>
+          </Card>
+        </Grid>
       </Grid.Container>
     </>
   );
