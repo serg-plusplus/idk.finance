@@ -106,6 +106,7 @@ class PredictionMarket {
     betInfo.amount = amount.toString();
     userRounds.set(epoch);
 
+    this._setRound(epoch, round);
     this._setBetInfo(epoch, sender, betInfo);
     this._setUserRounds(sender, userRounds);
 
