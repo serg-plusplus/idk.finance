@@ -74,6 +74,11 @@ class PredictionMarket {
     return this.rounds.get(epoch.toString());
   }
 
+  @view({})
+  getUserRounds({ account }: { account: string }) {
+    return this.userRounds.get(account);
+  }
+
   // PUBLIC
 
   /**
@@ -412,7 +417,7 @@ class PredictionMarket {
   }
 
   _getBetInfo(epoch: number, owner: string): BetInfo {
-    let betInfo: any = this.rounds.get(epoch.toString() + owner);
+    let betInfo: any = this.bids.get(epoch.toString() + owner);
     if (betInfo === null) {
       return new BetInfo(Position.None, "0", false);
     }
@@ -477,7 +482,7 @@ class PredictionMarket {
   }
 
   _setBetInfo(epoch: number, owner: string, betInfo: BetInfo): void {
-    this.rounds.set(epoch.toString() + owner, betInfo);
+    this.bids.set(epoch.toString() + owner, betInfo);
   }
 
   _setRound(epoch: number, round: Round): void {
