@@ -35,45 +35,47 @@ const tooltipStyles = {
 };
 
 // accessors
-const getDate = (d) => new Date(d[0]);
-const getStockValue = (d) => d[1];
+export const getDate = (d) => new Date(d.time);
+export const getStockValue = (d) => d.price;
 const formatDate = timeFormat("%I:%M:%I %p %b %d, '%y");
+const ELEMENTS_FROM_END_ON_START = 10;
 
 export type BrushProps = {
   width: number;
   height: number;
   margin?: { top: number; right: number; bottom: number; left: number };
   stock?: any;
+  rounds?: any;
 };
 
 type TooltipData = ChartPoint;
 
-const rounds = [
-  {
-    end: 1663113379000,
-    start: 1663109779000,
-    value: 4.427542874635345,
-    roundNumber: 2,
-    totalPrice: 123.4321,
-    priceChange: 4.56,
-  },
-  {
-    end: 1663111579000,
-    start: 1663109779000,
-    value: 4.434234770282088,
-    roundNumber: 1,
-    totalPrice: 123.4321,
-    priceChange: -2.14,
-  },
-  {
-    end: 1663109779000,
-    start: 1663109779000,
-    value: 4.451723886361865,
-    roundNumber: 0,
-    totalPrice: 123.4321,
-    priceChange: 8.49,
-  },
-]
+// const rounds = [
+//   {
+//     end: 1663113379000,
+//     start: 1663109779000,
+//     value: 4.427542874635345,
+//     roundNumber: 2,
+//     totalPrice: 123.4321,
+//     priceChange: 4.56,
+//   },
+//   {
+//     end: 1663111579000,
+//     start: 1663109779000,
+//     value: 4.434234770282088,
+//     roundNumber: 1,
+//     totalPrice: 123.4321,
+//     priceChange: -2.14,
+//   },
+//   {
+//     end: 1663109779000,
+//     start: 1663109779000,
+//     value: 4.451723886361865,
+//     roundNumber: 0,
+//     totalPrice: 123.4321,
+//     priceChange: 8.49,
+//   },
+// ]
 
 const BrushChart: FC = withTooltip<BrushProps, TooltipData>(({
   width,
@@ -84,7 +86,8 @@ const BrushChart: FC = withTooltip<BrushProps, TooltipData>(({
     bottom: 20,
     right: 20,
   },
-  stock = {prices: []},
+  stock = [],
+  rounds = [],
   showTooltip,
   hideTooltip,
   tooltipData,
@@ -96,7 +99,7 @@ const BrushChart: FC = withTooltip<BrushProps, TooltipData>(({
   const brushRef = useRef<BaseBrush | null>(null);
   // const [savedIndexes, setSavedIndexes] = useState({from: 40, to: null});
 
-  const [filteredStock, setFilteredStock] = useState(stock.prices.slice(-40));
+  const [filteredStock, setFilteredStock] = useState(stock.slice(-ELEMENTS_FROM_END_ON_START));
 
   // useEffect(() => {
   //   if (savedIndexes.to === null) {
@@ -107,7 +110,7 @@ const BrushChart: FC = withTooltip<BrushProps, TooltipData>(({
   // }, [stock.prices.slice, savedIndexes])
 
   const filteredDataRounds = useMemo(() => rounds.map(round => {
-    if (round.end >= filteredStock[0][0] && round.end <= filteredStock[filteredStock.length - 1][0]) {
+    if (round.time >= filteredStock[0].time && round.time <= filteredStock[filteredStock.length - 1].time) {
       return round;
     }
   }), [filteredStock])
@@ -119,7 +122,7 @@ const BrushChart: FC = withTooltip<BrushProps, TooltipData>(({
     // let isSaved = false;
     // let firstIndex = 0;
     // let lastIndex = stock.prices.length - 1;
-    const stockCopy = stock.prices.filter((s, index) => {
+    const stockCopy = stock.filter((s, index) => {
       const x = getDate(s).getTime();
       const y = getStockValue(s);
       if (x > x0 && x < x1 && y > y0 && y < y1) {
@@ -136,7 +139,7 @@ const BrushChart: FC = withTooltip<BrushProps, TooltipData>(({
     });
     // setSavedIndexes(prevState => ({from: firstIndex, to: prevState.from === null ? null : lastIndex}))
     setFilteredStock(stockCopy);
-  }, [stock.prices]);
+  }, [stock]);
 
   const innerHeight = height - margin.top - margin.bottom;
   const topChartBottomMargin = chartSeparation + 10;
@@ -172,26 +175,26 @@ const BrushChart: FC = withTooltip<BrushProps, TooltipData>(({
     () =>
       scaleTime<number>({
         range: [0, xBrushMax],
-        domain: extent(stock.prices, getDate) as [Date, Date],
+        domain: extent(stock, getDate) as [Date, Date],
       }),
-    [xBrushMax, stock.prices],
+    [xBrushMax, stock],
   );
   const brushStockScale = useMemo(
     () =>
       scaleLinear({
         range: [yBrushMax, 0],
-        domain: [min(stock.prices, getStockValue) || 0, max(stock.prices, getStockValue) || 0],
+        domain: [min(stock, getStockValue) || 0, max(stock, getStockValue) || 0],
         nice: true,
       }),
-    [yBrushMax, stock.prices],
+    [yBrushMax, stock],
   );
 
   const initialBrushPosition = useMemo(
     () => ({
-      start: {x: brushDateScale(getDate(stock.prices[stock.prices.length ? stock.prices.length - 40 : 50]))},
-      end: {x: brushDateScale(getDate(stock.prices[stock.prices.length ? stock.prices.length - 1 : 100]))},
+      start: {x: brushDateScale(getDate(stock[stock.length ? stock.length - ELEMENTS_FROM_END_ON_START : 50]))},
+      end: {x: brushDateScale(getDate(stock[stock.length ? stock.length - 1 : 100]))},
     }),
-    [brushDateScale, stock.prices],
+    [brushDateScale, stock],
   );
 
   return (
@@ -217,7 +220,7 @@ const BrushChart: FC = withTooltip<BrushProps, TooltipData>(({
           innerWidth={width - margin.right}
         />
         <AreaChart
-          stock={stock.prices}
+          stock={stock}
           width={width}
           yMax={yBrushMax}
           xScale={brushDateScale}
@@ -246,7 +249,7 @@ const BrushChart: FC = withTooltip<BrushProps, TooltipData>(({
             brushDirection="horizontal"
             initialBrushPosition={initialBrushPosition}
             onChange={onBrushChange}
-            onClick={() => setFilteredStock(stock.prices)}
+            onClick={() => setFilteredStock(stock)}
             selectedBoxStyle={selectedBrushStyle}
             useWindowMoveEvents
             renderBrushHandle={(props) => <BrushHandle {...props} />}
@@ -289,11 +292,11 @@ const BrushChart: FC = withTooltip<BrushProps, TooltipData>(({
                 textAlign: "center",
                 transform: "translateX(-50%)",
                 top: topChartHeight + margin.top,
-                left: 50 + dateScale(d.end),
+                left: 50 + dateScale(d.time),
                 backgroundColor: "rgba(255,255,255,.75)",
               }}
             >
-              #{d.roundNumber}
+              #{d.epoch}
             </div>
           );
         })

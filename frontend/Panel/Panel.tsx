@@ -221,7 +221,11 @@ const Panel: FC = () => {
                           display: "inline-block",
                         }}
                       >
-                        {toNear(latestRounds[0].bearAmount)}
+                        {toNear(
+                          userBids && userBids[state.currentEpoch]
+                            ? userBids[state.currentEpoch].amount
+                            : 0
+                        )}
                       </Text>
                     </Text>
                   </Grid>
