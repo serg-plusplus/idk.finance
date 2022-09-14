@@ -14,6 +14,7 @@ import {WithTooltipProvidedProps} from "@visx/tooltip/lib/enhancers/withTooltip"
 import AreaChart from './AreaChart';
 import AreaChart2 from './AreaChart2';
 import {ChartPoint} from "./chart-data";
+import {useIdkState} from "../idk-state";
 
 // Initialize some variables
 const brushMargin = {top: 10, bottom: 15, left: 50, right: 20};
@@ -36,8 +37,9 @@ const tooltipStyles = {
 
 // accessors
 const getDate = (d) => new Date(d[0]);
+const getDateRounds = (d) => new Date(d);
 const getStockValue = (d) => d[1];
-const formatDate = timeFormat("%b %d, '%y");
+const formatDate = timeFormat("%I:%M:%I %p %b %d, '%y");
 
 export type BrushProps = {
   width: number;
@@ -47,6 +49,21 @@ export type BrushProps = {
 };
 
 type TooltipData = ChartPoint;
+
+const rounds = [
+  {
+    end: 1663113379000,
+    start: 1663111579000,
+  },
+  {
+    end: 1663111579000,
+    start: 1663109779000,
+  },
+  {
+    end: 1663109779000,
+    start: 1663107979000,
+  },
+]
 
 const BrushChart: FC = withTooltip<BrushProps, TooltipData>(({
   width,
@@ -64,8 +81,20 @@ const BrushChart: FC = withTooltip<BrushProps, TooltipData>(({
   tooltipTop = 0,
   tooltipLeft = 0,
 }) => {
+  const state = useIdkState();
+  console.log('state', state)
   const brushRef = useRef<BaseBrush | null>(null);
+  const finalData = useMemo(() => [...stock.prices, [1663114401000, null]], [stock.prices])
+
   const [filteredStock, setFilteredStock] = useState(stock.prices);
+
+  const filteredDataRounds = useMemo(() => rounds.map(round => {
+    console.log('round.end', round.end, filteredStock[0][0], filteredStock[filteredStock.length - 1][0])
+    if (round.end >= filteredStock[0][0] && round.end <= filteredStock[filteredStock.length - 1][0]) {
+      return round.end;
+    }
+  }), [filteredStock])
+
 
   const onBrushChange = (domain: Bounds | null) => {
     if (!domain) return;
@@ -97,6 +126,14 @@ const BrushChart: FC = withTooltip<BrushProps, TooltipData>(({
         domain: extent(filteredStock, getDate) as [Date, Date],
       }),
     [xMax, filteredStock],
+  );
+  const dateScaleRounds = useMemo(
+    () =>
+      scaleTime<number>({
+        range: [0, xMax],
+        domain: extent(filteredDataRounds, getDateRounds) as [Date, Date],
+      }),
+    [xMax, filteredDataRounds],
   );
   const stockScale = useMemo(
     () =>
@@ -144,6 +181,7 @@ const BrushChart: FC = withTooltip<BrushProps, TooltipData>(({
           margin={{...margin, bottom: topChartBottomMargin}}
           yMax={yMax}
           xScale={dateScale}
+          xScaleRounds={dateScaleRounds}
           yScale={stockScale}
           gradientColor={background2}
           showTooltip={showTooltip}

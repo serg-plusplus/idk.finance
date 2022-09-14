@@ -11,7 +11,7 @@ import { useIdkState } from "./idk-state";
 import Header from "./Header/Header";
 
 const App: FC = () => {
-  const { isSignedIn, wallet, getState } = useIdkState();
+  const { isSignedIn, wallet, getState, getRound } = useIdkState();
 
   const [valueFromBlockchain, setValueFromBlockchain] = useState();
   const [uiPleaseWait, setUiPleaseWait] = useState(false);
@@ -22,6 +22,7 @@ const App: FC = () => {
   // Get blockchian state once on component load
   useEffect(() => {
     getState().then(console.info).catch(console.error);
+    getRound(0).then(console.info).catch(console.error);
     // getState
     //   .then(setValueFromBlockchain)
     //   .catch(alert)

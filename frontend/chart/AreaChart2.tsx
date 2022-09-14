@@ -40,6 +40,7 @@ const AreaChart2: FC<any> = ({
   yMax,
   margin,
   xScale,
+  xScaleRounds,
   yScale,
   top,
   left,
@@ -53,7 +54,6 @@ const AreaChart2: FC<any> = ({
   innerWidth,
 }) => {
   if (width < 10) return null;
-  console.log('innerHeight', innerHeight, margin)
 
   const handleTooltip = useCallback(
     (
@@ -108,6 +108,15 @@ const AreaChart2: FC<any> = ({
         strokeDasharray="1,3"
         stroke={accentColor}
         strokeOpacity={0.2}
+        pointerEvents="none"
+      />
+      <GridColumns
+        top={margin.top}
+        scale={xScaleRounds}
+        height={topChartHeight}
+        strokeDasharray="1,3"
+        stroke="blue"
+        strokeOpacity={1}
         pointerEvents="none"
       />
       <AreaClosed
