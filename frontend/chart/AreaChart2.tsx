@@ -9,8 +9,9 @@ import {accentColor, accentColorDark} from "./Chart";
 import {GridColumns, GridRows} from "@visx/grid";
 import { localPoint } from "@visx/event";
 import {ChartPoint} from "./chart-data";
+import {getDate, getStockValue} from "./Chart2";
 
-const bisectDate = bisector<ChartPoint, Date>((d) => new Date(d[0])).left;
+const bisectDate = bisector<ChartPoint, Date>((d) => new Date(d.time)).left;
 
 // Initialize some variables
 const axisColor = '#fff';
@@ -28,10 +29,6 @@ const axisLeftTickLabelProps = {
   textAnchor: 'end' as const,
   fill: axisColor,
 };
-
-// accessors
-const getDate = (d) => new Date(d[0]);
-const getStockValue = (d) => d[1];
 
 const AreaChart2: FC<any> = ({
   stock = [],
@@ -126,9 +123,9 @@ const AreaChart2: FC<any> = ({
         }
         const barWidth = 1;
         const barHeight = yMax;
-        const barX = xScale(d.end);
+        const barX = xScale(d.time);
         return (
-          <Fragment key={`bar-${d.end}`}>
+          <Fragment key={`bar-${d.time}`}>
             <Bar
               x={barX}
               y={0}
@@ -137,10 +134,10 @@ const AreaChart2: FC<any> = ({
               fill="blue"
             />
             <circle
-              key={`marker-circle${d.end}`}
+              key={`marker-circle${d.time}`}
               r={3}
-              cx={xScale(d.end)}
-              cy={yScale(d.value)}
+              cx={xScale(d.time)}
+              cy={yScale(d.price)}
               fill="blue"
             />
             {/*<MarkerCircle id={`marker-circle${d.end}`} fill="blue" size={2} refX={barX} />*/}

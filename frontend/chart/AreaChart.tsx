@@ -3,10 +3,7 @@ import { AreaClosed } from '@visx/shape';
 import { AxisScale } from '@visx/axis';
 import { LinearGradient } from '@visx/gradient';
 import { curveMonotoneX } from '@visx/curve';
-
-// accessors
-const getDate = (d) => new Date(d[0]);
-const getStockValue = (d) => d[1];
+import {getDate, getStockValue} from "./Chart2";
 
 export default function AreaChart({
   stock = [],
