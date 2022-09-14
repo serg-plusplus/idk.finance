@@ -133,7 +133,16 @@ export const [IdkStateProvider, useIdkState] = constate(
         const userBids = userRounds
           ? Object.fromEntries(
               await Promise.all(
-                userRounds.map(async (epoch) => [epoch, await getBid(epoch)])
+                userRounds.map(async (epoch) => {
+                  const round = await getRound(epoch);
+                  const bid = await getBid(epoch);
+                  const hasWon =
+                    bid.position === "2"
+                      ? BigInt(round.closePrice) > BigInt(round.lockPrice)
+                      : BigInt(round.closePrice) < BigInt(round.lockPrice);
+
+                  return [epoch, { ...bid, round, hasWon }];
+                })
               )
             )
           : {};
@@ -172,7 +181,7 @@ export const [IdkStateProvider, useIdkState] = constate(
     const claim = useCallback(
       async (epochs: number[]) => {
         return await wallet.callMethod({
-          method: "bet",
+          method: "claim",
           args: { epochs },
         });
       },
