@@ -29,11 +29,11 @@ class PredictionMarket {
   oracle: string = "priceoracle.testnet";
   oracleParams: string = JSON.stringify({ asset_ids: ["wrap.testnet"] });
   oracleGas: string = "50000000000000";
-  timeDelay: string = "120000000000";
+  timeDelay: string = "60000000000";
   assetId: string = "wrap.testnet";
 
   minBid: string = "1000";
-  duration: string = "120000000000";
+  duration: string = "60000000000";
 
   feeRate: string = "10";
   feePrecision: string = "1000";

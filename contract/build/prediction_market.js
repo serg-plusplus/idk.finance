@@ -1026,10 +1026,10 @@ let PredictionMarket = (_dec = NearBindgen({}), _dec2 = initialize({}), _dec3 = 
     asset_ids: ["wrap.testnet"]
   });
   oracleGas = "50000000000000";
-  timeDelay = "120000000000";
+  timeDelay = "60000000000";
   assetId = "wrap.testnet";
   minBid = "1000";
-  duration = "120000000000";
+  duration = "60000000000";
   feeRate = "10";
   feePrecision = "1000";
   feeTreasury = "0";

@@ -24,32 +24,38 @@ const Panel: FC = () => {
 
   const sortedBidKeys = userRounds ? userRounds.sort((a, b) => b - a) : [];
 
-  const handleBetSubmit = useCallback((evt) => {
-    evt.preventDefault();
+  const handleBetSubmit = useCallback(
+    (evt) => {
+      evt.preventDefault();
 
-    const amount = evt.target.elements.amount.value;
-    const position = evt.target.elements.position.value;
+      const amount = evt.target.elements.amount.value;
+      const position = evt.target.elements.position.value;
 
-    if (!amount) return;
+      if (!amount) return;
 
-    bet(position, amount)
-      .then(() => alert("Success!"))
-      .catch((err) => {
-        console.error(err);
-        alert(err.message);
-      });
-  }, []);
+      bet(position, amount)
+        .then(() => alert("Success!"))
+        .catch((err) => {
+          console.error(err);
+          alert(err.message);
+        });
+    },
+    [bet]
+  );
 
-  const handleClaimSubmit = useCallback((epoch) => {
-    if (!epoch) return;
+  const handleClaimSubmit = useCallback(
+    (epoch) => {
+      if (!epoch) return;
 
-    claim([epoch])
-      .then(() => alert("Successfully claimed!"))
-      .catch((err) => {
-        console.error(err);
-        alert(err.message);
-      });
-  }, []);
+      claim([epoch])
+        .then(() => alert("Successfully claimed!"))
+        .catch((err) => {
+          console.error(err);
+          alert(err.message);
+        });
+    },
+    [claim]
+  );
 
   if (!state || !latestRounds?.length) return null;
 
@@ -126,7 +132,7 @@ const Panel: FC = () => {
                   </Grid>
                   <Grid xs={12}>
                     <Text css={{ color: "$accents8" }}>
-                      Won:{" "}
+                      Lock price:{" "}
                       <Text
                         weight="semibold"
                         css={{
@@ -135,10 +141,7 @@ const Panel: FC = () => {
                           display: "inline-block",
                         }}
                       >
-                        {BigInt(prevRound.closePrice) >
-                        BigInt(prevRound.lockPrice)
-                          ? "Bulls 🐂"
-                          : "Bears 🐻"}
+                        ${Number(prevRound.lockPrice) / 1_000_0}
                       </Text>
                     </Text>
                   </Grid>
@@ -224,7 +227,11 @@ const Panel: FC = () => {
                           display: "inline-block",
                         }}
                       >
-                        {toNear(latestRounds[0].bearAmount)}
+                        {toNear(
+                          userBids && userBids[state.currentEpoch]
+                            ? userBids[state.currentEpoch].amount
+                            : 0
+                        )}
                       </Text>
                     </Text>
                   </Grid>
@@ -272,7 +279,7 @@ const Panel: FC = () => {
         </Grid>
         <Grid xs={4}>
           <Card css={{ p: "$6", marginTop: 16 }}>
-            <form onSubmit={handleBetSubmit}>
+            <form onSubmit={() => null}>
               <Card.Header>
                 <Text h2 css={{ lineHeight: "$xs" }}>
                   My bets
@@ -299,9 +306,12 @@ const Panel: FC = () => {
                         css={{
                           marginLeft: 0,
                           marginRight: 8,
-                          color: userBids![key].hasWon
-                            ? "$green700"
-                            : "$red800",
+                          color:
+                            Number(key) >= state.currentEpoch - 1
+                              ? "$yellow700"
+                              : userBids![key].hasWon
+                              ? "$green700"
+                              : "$red800",
                           display: "inline-block",
                         }}
                       >
@@ -316,7 +326,7 @@ const Panel: FC = () => {
                         >
                           Claimed
                         </Checkbox>
-                      ) : (
+                      ) : Number(key) < Number(state.currentEpoch - 1) ? (
                         userBids![key].hasWon && (
                           <Button
                             size="xs"
@@ -329,6 +339,8 @@ const Panel: FC = () => {
                             Claim
                           </Button>
                         )
+                      ) : (
+                        "Pending"
                       )}
                     </Grid>
                   </React.Fragment>
