@@ -126,7 +126,7 @@ const Panel: FC = () => {
                   </Grid>
                   <Grid xs={12}>
                     <Text css={{ color: "$accents8" }}>
-                      Won:{" "}
+                      Lock price:{" "}
                       <Text
                         weight="semibold"
                         css={{
@@ -135,10 +135,7 @@ const Panel: FC = () => {
                           display: "inline-block",
                         }}
                       >
-                        {BigInt(prevRound.closePrice) >
-                        BigInt(prevRound.lockPrice)
-                          ? "Bulls 🐂"
-                          : "Bears 🐻"}
+                        {Number(prevRound.lockPrice) / 1_000_0}
                       </Text>
                     </Text>
                   </Grid>
@@ -299,9 +296,12 @@ const Panel: FC = () => {
                         css={{
                           marginLeft: 0,
                           marginRight: 8,
-                          color: userBids![key].hasWon
-                            ? "$green700"
-                            : "$red800",
+                          color:
+                            Number(key) >= state.currentEpoch - 1
+                              ? "$yellow700"
+                              : userBids![key].hasWon
+                              ? "$green700"
+                              : "$red800",
                           display: "inline-block",
                         }}
                       >
@@ -316,7 +316,7 @@ const Panel: FC = () => {
                         >
                           Claimed
                         </Checkbox>
-                      ) : (
+                      ) : Number(key) < Number(state.currentEpoch - 1) ? (
                         userBids![key].hasWon && (
                           <Button
                             size="xs"
@@ -329,6 +329,8 @@ const Panel: FC = () => {
                             Claim
                           </Button>
                         )
+                      ) : (
+                        "Pending"
                       )}
                     </Grid>
                   </React.Fragment>
